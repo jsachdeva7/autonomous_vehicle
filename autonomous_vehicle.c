@@ -55,14 +55,15 @@ int manual_steering = 0;
 bool autodrive = true;
 
 // color constants
-int yellow[] = {231, 219, 125};
-int lane_color[] = {70, 71, 74};
+const unsigned char yellow[] = {95, 187, 203};
+const unsigned char lane_color[] = {70, 71, 74};
 
 void init() {
   wbu_driver_init();
   
   // Initialize camera properties
   camera = wb_robot_get_device("camera"); // Get camera device first
+  wb_camera_enable(camera, TIME_STEP);
   camera_width = wb_camera_get_width(camera);
   camera_height = wb_camera_get_height(camera);
   camera_fov = wb_camera_get_fov(camera);
@@ -94,25 +95,26 @@ void set_speed(double desired_speed) {
   wbu_driver_set_cruising_speed(desired_speed);
 }
 
-double stay_in_lane_angle(const unsigned char *camera_data) {
+double stay_in_lane_angle(const unsigned char *camera_image) {
   int num_pixels = camera_height * camera_width;
-  const unsigned char *pixel_data = camera_data;
   int lane_pixels = 0;
   int sum_x_lane = 0;
   int yellow_pixels = 0;
   int sum_x_yellow = 0;
 
-  for (int i = 0; i < num_pixels; ++i) {
-    if (is_yellow(pixel_data)) {
+  const unsigned char *pixel_data = camera_image;
+
+  for (int i = 0; i < num_pixels; i++) {
+    if (is_yellow(&pixel_data[i * 4]) == true) {
       yellow_pixels++;
       sum_x_yellow += i % camera_width;
-    } else if (is_lane_color(pixel_data)) {
+    } else if (is_lane_color(&pixel_data[i * 4]) == true) {
       lane_pixels++;
       sum_x_lane += i % camera_width;
     }
   }
 
-  if (lane_pixels == 0 || yellow_pixels == 0)
+  if (yellow_pixels == 0)
     return UNKNOWN;
 
   // Calculate average x position for both yellow line and lane
@@ -126,17 +128,17 @@ double stay_in_lane_angle(const unsigned char *camera_data) {
   return (target_x - 0.5) * camera_fov;
 }
 
-bool is_lane_color(int* pixel) {
-  bool[] bool_array = {false, false, false};
-  for (int i = 0; i < 3; ++i) {
-    if (pixel[i] - lane_color[i] > 0 && pixel[i] - lane_color[i] < 50) {
-      bool_array[i] = true;
+bool is_lane_color(const unsigned char* pixel) {
+    bool bool_array[3] = {false, false, false};
+    for (int i = 0; i < 3; ++i) {
+        if (pixel[i] - lane_color[i] > 0 && pixel[i] - lane_color[i] < 50) {
+            bool_array[i] = true;
+        }
     }
-  }
-  return bool_array[0] && bool_array[1] && bool_array[2];
+    return bool_array[0] && bool_array[1] && bool_array[2];
 }
 
-bool is_yellow(int* pixel) {
+bool is_yellow(const unsigned char* pixel) {
   int color_diff = abs(pixel[0] - yellow[0]) + abs(pixel[1] - yellow[1]) + abs(pixel[2] - yellow[2]);
   return color_diff < 30;
 }
@@ -145,11 +147,18 @@ int main(int argc, char **argv) {
   init();
 
   set_speed(10.0);
-  set_steering_angle(-0.05);
+  // set_steering_angle(-0.05);
 
   // main loop
   while (wbu_driver_step() != -1) {
     static int i = 0;
+
+    const unsigned char * camera_data = wb_camera_get_image(camera);
+    double new_steering_angle = stay_in_lane_angle(camera_data);
+    if (new_steering_angle != UNKNOWN) {
+      set_steering_angle(new_steering_angle);
+    }
+    printf("new_steering_angle: %f\n", new_steering_angle);
     
     // updates sensors only every TIME_STEP milliseconds
     // if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {}
