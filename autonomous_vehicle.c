@@ -7,12 +7,15 @@
 #include <webots/lidar.h>
 #include <webots/robot.h>
 #include <webots/vehicle/driver.h>
+#include <webots/display.h>
 
 
 // c imports
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <stddef.h>
 
 // custom file imports
 #include <autonomous_vehicles.h>
@@ -30,6 +33,9 @@ WbDeviceTag camera;
 int camera_width;
 int camera_height;
 double camera_fov;
+
+// display
+WbDeviceTag main_display;
 
 // SICK laser
 WbDeviceTag sick;
@@ -56,17 +62,26 @@ bool autodrive = true;
 
 // color constants
 const unsigned char yellow[] = {95, 187, 203};
-const unsigned char lane_color[] = {70, 71, 74};
+const unsigned char lane_color[] = {156, 156, 156};
 
 void init() {
   wbu_driver_init();
   
+  // Initialize display
+  main_display = wb_robot_get_device("main_display_new");
+  if (main_display == 0) {
+    printf("Error: main_display not found\n");
+    // exit(1);
+  }
+  
   // Initialize camera properties
-  camera = wb_robot_get_device("camera"); // Get camera device first
+  camera = wb_robot_get_device("camera");
   wb_camera_enable(camera, TIME_STEP);
   camera_width = wb_camera_get_width(camera);
   camera_height = wb_camera_get_height(camera);
   camera_fov = wb_camera_get_fov(camera);
+
+  wb_display_attach_camera(main_display, camera);
   
   wbu_driver_set_hazard_flashers(true);
   wbu_driver_set_dipped_beams(true);
@@ -96,7 +111,6 @@ void set_speed(double desired_speed) {
 }
 
 double stay_in_lane_angle(const unsigned char *camera_image) {
-  int num_pixels = camera_height * camera_width;
   int lane_pixels = 0;
   int sum_x_lane = 0;
   int yellow_pixels = 0;
@@ -104,11 +118,19 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
 
   const unsigned char *pixel_data = camera_image;
 
+  // Only look at bottom third of image
+  int start_y = (camera_height * 2) / 3;  // bottom third instead of half
+
   // First pass: find yellow line position
-  for (int i = 0; i < num_pixels; i++) {
-    if (is_yellow(&pixel_data[i * 4])) {
-      yellow_pixels++;
-      sum_x_yellow += i % camera_width;
+  for (int y = start_y; y < camera_height; y++) {
+    for (int x = 0; x < camera_width; x++) {
+      int i = y * camera_width + x;
+      if (is_yellow(&pixel_data[i * 4])) {
+        yellow_pixels++;
+        sum_x_yellow += x;
+        wb_display_set_color(0, 255, 0);
+        wb_display_draw_pixel(main_display, x, y);
+      }
     }
   }
 
@@ -119,11 +141,15 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   double yellow_avg_x = (double)sum_x_yellow / yellow_pixels;
 
   // Second pass: only count lane markings to the right of average yellow position
-  for (int i = 0; i < num_pixels; i++) {
-    int x = i % camera_width;
-    if (x > yellow_avg_x && is_lane_color(&pixel_data[i * 4])) {
-      lane_pixels++;
-      sum_x_lane += x;
+  for (int y = start_y; y < camera_height; y++) {
+    for (int x = 0; x < camera_width; x++) {
+      int i = y * camera_width + x;
+      if (x > yellow_avg_x && is_lane_color(&pixel_data[i * 4])) {
+        lane_pixels++;
+        wb_display_set_color(0, 0, 255);
+        wb_display_draw_pixel(main_display, x, y);
+        sum_x_lane += x;
+      }
     }
   }
 
@@ -134,8 +160,8 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   double lane_avg_x = (double)sum_x_lane / lane_pixels / camera_width;
   double yellow_avg_x_normalized = yellow_avg_x / camera_width;
   
-  // Target position is halfway between yellow line and lane
-  double target_x = (yellow_avg_x_normalized + lane_avg_x) / 2;
+  // Target position should be closer to the lane marking than the yellow line
+  double target_x = (0.3 * yellow_avg_x_normalized + 0.7 * lane_avg_x);
   
   // Convert to angle
   return (target_x - 0.5) * camera_fov;
@@ -159,7 +185,7 @@ bool is_yellow(const unsigned char* pixel) {
 int main(int argc, char **argv) {
   init();
 
-  set_speed(20.0);
+  set_speed(40.0);
   // set_steering_angle(-0.05);
 
   // main loop
@@ -173,7 +199,7 @@ int main(int argc, char **argv) {
     } else {
       set_steering_angle(0.0);
     }
-    printf("new_steering_angle: %f\n", new_steering_angle);
+    // printf("new_steering_angle: %f\n", new_steering_angle);
     
     // updates sensors only every TIME_STEP milliseconds
     // if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {}
