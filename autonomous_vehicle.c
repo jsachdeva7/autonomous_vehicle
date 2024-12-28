@@ -54,14 +54,40 @@ double steering_angle = 0.0;
 int manual_steering = 0;
 bool autodrive = true;
 
-
-int main(int argc, char **argv) {
+void init() {
   wbu_driver_init();
-
   wbu_driver_set_hazard_flashers(true);
   wbu_driver_set_dipped_beams(true);
   wbu_driver_set_antifog_lights(true);
   wbu_driver_set_wiper_mode(SLOW);
+}
+
+void set_steering_angle(double desired_angle) {
+  double steering_change = desired_angle - steering_angle;
+  if (steering_change > 0) {
+    steering_change = (steering_change > 0.1) ? 0.1 : steering_change;
+  } else if (steering_change < 0) {
+    steering_change = (steering_change < -0.1) ? -0.1 : steering_change;
+  }
+  steering_angle += steering_change;
+  if (steering_angle > 0.5) {
+    steering_angle = 0.5;
+  } else if (steering_angle < -0.5) {
+    steering_angle = -0.5;
+  }
+  wbu_driver_set_steering_angle(steering_angle);
+}
+
+void set_speed(double desired_speed) {
+  desired_speed = (desired_speed > 30) ? 30 : desired_speed;
+  wbu_driver_set_cruising_speed(desired_speed);
+}
+
+int main(int argc, char **argv) {
+  init();
+
+  set_speed(10.0);
+  set_steering_angle(-0.1);
 
   // main loop
   while (wbu_driver_step() != -1) {
