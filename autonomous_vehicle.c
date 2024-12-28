@@ -104,25 +104,38 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
 
   const unsigned char *pixel_data = camera_image;
 
+  // First pass: find yellow line position
   for (int i = 0; i < num_pixels; i++) {
-    if (is_yellow(&pixel_data[i * 4]) == true) {
+    if (is_yellow(&pixel_data[i * 4])) {
       yellow_pixels++;
       sum_x_yellow += i % camera_width;
-    } else if (is_lane_color(&pixel_data[i * 4]) == true) {
-      lane_pixels++;
-      sum_x_lane += i % camera_width;
     }
   }
 
   if (yellow_pixels == 0)
     return UNKNOWN;
 
-  // Calculate average x position for both yellow line and lane
-  double yellow_avg_x = (double)sum_x_yellow / yellow_pixels / camera_width;
+  // Calculate average yellow line position
+  double yellow_avg_x = (double)sum_x_yellow / yellow_pixels;
+
+  // Second pass: only count lane markings to the right of average yellow position
+  for (int i = 0; i < num_pixels; i++) {
+    int x = i % camera_width;
+    if (x > yellow_avg_x && is_lane_color(&pixel_data[i * 4])) {
+      lane_pixels++;
+      sum_x_lane += x;
+    }
+  }
+
+  if (lane_pixels == 0)
+    return UNKNOWN;
+
+  // Calculate average x position for lane
   double lane_avg_x = (double)sum_x_lane / lane_pixels / camera_width;
+  double yellow_avg_x_normalized = yellow_avg_x / camera_width;
   
   // Target position is halfway between yellow line and lane
-  double target_x = (yellow_avg_x + lane_avg_x) / 2;
+  double target_x = (yellow_avg_x_normalized + lane_avg_x) / 2;
   
   // Convert to angle
   return (target_x - 0.5) * camera_fov;
@@ -146,7 +159,7 @@ bool is_yellow(const unsigned char* pixel) {
 int main(int argc, char **argv) {
   init();
 
-  set_speed(10.0);
+  set_speed(20.0);
   // set_steering_angle(-0.05);
 
   // main loop
@@ -157,6 +170,8 @@ int main(int argc, char **argv) {
     double new_steering_angle = stay_in_lane_angle(camera_data);
     if (new_steering_angle != UNKNOWN) {
       set_steering_angle(new_steering_angle);
+    } else {
+      set_steering_angle(0.0);
     }
     printf("new_steering_angle: %f\n", new_steering_angle);
     
