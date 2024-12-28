@@ -14,6 +14,9 @@
 #include <stdio.h>
 #include <string.h>
 
+// custom file imports
+#include <autonomous_vehicles.h>
+
 // to be used as array indices
 enum { X, Y, Z };
 
