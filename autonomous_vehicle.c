@@ -63,6 +63,7 @@ bool autodrive = true;
 // color constants
 const unsigned char yellow[] = {95, 187, 203};
 const unsigned char lane_color[] = {156, 156, 156};
+int white = 0xFFFFFF;
 
 void init() {
   wbu_driver_init();
@@ -116,6 +117,9 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   int yellow_pixels = 0;
   int sum_x_yellow = 0;
 
+  int magenta = 0xFF00FF;
+  int cyan = 0xFFFF00;
+
   const unsigned char *pixel_data = camera_image;
 
   // Only look at bottom third of image
@@ -128,7 +132,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
       if (is_yellow(&pixel_data[i * 4])) {
         yellow_pixels++;
         sum_x_yellow += x;
-        wb_display_set_color(0, 255, 0);
+        wb_display_set_color(main_display, magenta);
         wb_display_draw_pixel(main_display, x, y);
       }
     }
@@ -146,7 +150,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
       int i = y * camera_width + x;
       if (x > yellow_avg_x && is_lane_color(&pixel_data[i * 4])) {
         lane_pixels++;
-        wb_display_set_color(0, 0, 255);
+        wb_display_set_color(main_display, cyan);
         wb_display_draw_pixel(main_display, x, y);
         sum_x_lane += x;
       }
@@ -182,6 +186,11 @@ bool is_yellow(const unsigned char* pixel) {
   return color_diff < 30;
 }
 
+void reset_display() {
+  wb_display_set_color(main_display, white);
+  wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
+}
+
 int main(int argc, char **argv) {
   init();
 
@@ -199,11 +208,12 @@ int main(int argc, char **argv) {
     } else {
       set_steering_angle(0.0);
     }
-    // printf("new_steering_angle: %f\n", new_steering_angle);
+    printf("new_steering_angle: %f\n", new_steering_angle);
     
     // updates sensors only every TIME_STEP milliseconds
     // if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {}
-      
+    
+    reset_display();
     ++i;
   }
 
