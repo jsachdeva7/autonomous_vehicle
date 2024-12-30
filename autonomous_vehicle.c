@@ -82,7 +82,7 @@ void init() {
   camera_height = wb_camera_get_height(camera);
   camera_fov = wb_camera_get_fov(camera);
 
-  wb_display_attach_camera(main_display, camera);
+  // wb_display_attach_camera(main_display, camera);
   
   wbu_driver_set_hazard_flashers(true);
   wbu_driver_set_dipped_beams(true);
@@ -107,11 +107,21 @@ void set_steering_angle(double desired_angle) {
 }
 
 void set_speed(double desired_speed) {
-  desired_speed = (desired_speed > 30) ? 30 : desired_speed;
+  desired_speed = (desired_speed > 150) ? 50 : desired_speed;
   wbu_driver_set_cruising_speed(desired_speed);
 }
 
 double stay_in_lane_angle(const unsigned char *camera_image) {
+  // First, create a new image from the camera data
+  WbImageRef camera_frame = wb_display_image_new(main_display, camera_width, camera_height, camera_image, WB_IMAGE_BGRA);
+  
+  // Paste the camera frame to the display
+  wb_display_image_paste(main_display, camera_frame, 0, 0, false);
+  
+  // Free the image reference since we're done with it
+  wb_display_image_delete(main_display, camera_frame);
+  
+  // Now continue with your existing pixel drawing code
   int lane_pixels = 0;
   int sum_x_lane = 0;
   int yellow_pixels = 0;
@@ -143,6 +153,13 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
 
   // Calculate average yellow line position
   double yellow_avg_x = (double)sum_x_yellow / yellow_pixels;
+  
+  // Draw yellow line indicator
+  int vanishing_x = camera_width / 2;
+  wb_display_set_color(main_display, magenta);
+  wb_display_draw_line(main_display, 
+                      (int)yellow_avg_x, camera_height,        // bottom point
+                      vanishing_x, start_y);                   // top point at vanishing point
 
   // Second pass: only count lane markings to the right of average yellow position
   for (int y = start_y; y < camera_height; y++) {
@@ -161,11 +178,20 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
     return UNKNOWN;
 
   // Calculate average x position for lane
-  double lane_avg_x = (double)sum_x_lane / lane_pixels / camera_width;
+  double lane_avg_x = (double)sum_x_lane / lane_pixels;
+  
+  // Draw white lane indicator
+  wb_display_set_color(main_display, cyan);
+  wb_display_draw_line(main_display, 
+                      (int)lane_avg_x, camera_height,          // bottom point
+                      vanishing_x, start_y);                   // top point at vanishing point
+
+  // Continue with your existing calculations
+  lane_avg_x = lane_avg_x / camera_width;
   double yellow_avg_x_normalized = yellow_avg_x / camera_width;
   
   // Target position should be closer to the lane marking than the yellow line
-  double target_x = (0.3 * yellow_avg_x_normalized + 0.7 * lane_avg_x);
+  double target_x = (0.4 * yellow_avg_x_normalized + 0.6 * lane_avg_x);
   
   // Convert to angle
   return (target_x - 0.5) * camera_fov;
@@ -194,26 +220,27 @@ void reset_display() {
 int main(int argc, char **argv) {
   init();
 
-  set_speed(40.0);
+  set_speed(30.0);
   // set_steering_angle(-0.05);
 
   // main loop
   while (wbu_driver_step() != -1) {
     static int i = 0;
-
-    const unsigned char * camera_data = wb_camera_get_image(camera);
-    double new_steering_angle = stay_in_lane_angle(camera_data);
-    if (new_steering_angle != UNKNOWN) {
-      set_steering_angle(new_steering_angle);
-    } else {
-      set_steering_angle(0.0);
+    if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {
+      const unsigned char * camera_data = wb_camera_get_image(camera);
+      double new_steering_angle = stay_in_lane_angle(camera_data);
+      if (new_steering_angle != UNKNOWN) {
+        set_steering_angle(new_steering_angle);
+      }
+      printf("new_steering_angle: %f\n", new_steering_angle);
     }
-    printf("new_steering_angle: %f\n", new_steering_angle);
+
+    
     
     // updates sensors only every TIME_STEP milliseconds
     // if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {}
     
-    reset_display();
+    // reset_display();
     ++i;
   }
 
