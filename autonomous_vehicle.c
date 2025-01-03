@@ -221,7 +221,6 @@ int main(int argc, char **argv) {
   init();
 
   set_speed(30.0);
-  // set_steering_angle(-0.05);
 
   // main loop
   while (wbu_driver_step() != -1) {
@@ -235,12 +234,6 @@ int main(int argc, char **argv) {
       printf("new_steering_angle: %f\n", new_steering_angle);
     }
 
-    
-    
-    // updates sensors only every TIME_STEP milliseconds
-    // if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {}
-    
-    // reset_display();
     ++i;
   }
 
