@@ -12,4 +12,4 @@ build/release/autonomous_vehicle.o: autonomous_vehicle.c \
  C:\Program\ Files\Webots/include/controller/c/webots/robot.h \
  C:\Program\ Files\Webots/include/controller/c/webots/vehicle/driver.h \
  C:\Program\ Files\Webots/include/controller/c/webots/types.h \
- autonomous_vehicles.h
+ autonomous_vehicles.h helper.h

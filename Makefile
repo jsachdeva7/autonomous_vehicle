@@ -19,9 +19,38 @@
 
 null :=
 space := $(null) $(null)
-WEBOTS_HOME_PATH?=$(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
+WEBOTS_HOME_PATH ?= $(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 
+# Source files
+SRC = autonomous_vehicle.c helper.c
+
+# Object files
+OBJ = build/release/autonomous_vehicle.o build/release/helper.o
+
+# Compiler
+CC = gcc
+
+# Compiler flags
+CFLAGS = -Wall -Wextra -O2 -I$(WEBOTS_HOME_PATH)/include/controller/c -I.
+
+# Libraries
 LIBRARIES = -ldriver -lcar
 
-# Do not modify the following: this includes Webots global Makefile.include
+# Output executable
+TARGET = build/release/autonomous_vehicle.exe
+
+# Include Webots global Makefile
 include $(WEBOTS_HOME_PATH)/resources/Makefile.include
+
+# Build rule
+all: $(TARGET)
+
+# Linking step
+$(TARGET): $(OBJ)
+	$(CC) $^ -o $@ $(LIBRARIES)
+
+# Compilation step (ensures object files go to build/release/)
+build/release/%.o: %.c
+	@mkdir -p build/release
+	$(CC) $(CFLAGS) -c $< -o $@
+

@@ -19,6 +19,7 @@
 // custom file imports
 // #include "pid.h"
 #include "autonomous_vehicles.h"
+#include "helper.h"
 
 // to be used as array indices
 enum { X, Y, Z };
@@ -238,6 +239,7 @@ void reset_display() {
 }
 
 int main(void) {
+  print_hello();
   // pid_init(&steering_pid);
   init();
   set_speed(30.0);
@@ -251,7 +253,7 @@ int main(void) {
       if (new_steering_angle != UNKNOWN) {
         set_steering_angle(new_steering_angle);
       }
-      printf("new_steering_angle: %f\n", new_steering_angle);
+      // printf("new_steering_angle: %f\n", new_steering_angle);
     }
 
     ++i;
