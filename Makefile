@@ -22,10 +22,10 @@ space := $(null) $(null)
 WEBOTS_HOME_PATH ?= $(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 
 # Source files
-SRC = autonomous_vehicle.c helper.c
+SRC = autonomous_vehicle.c helper.c pid.c
 
 # Object files
-OBJ = build/release/autonomous_vehicle.o build/release/helper.o
+OBJ = build/release/autonomous_vehicle.o build/release/helper.o build/release/pid.o
 
 # Compiler
 CC = gcc

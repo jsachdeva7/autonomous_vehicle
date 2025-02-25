@@ -1,12 +1,17 @@
 #include "pid.h"
+#include <stdio.h>
 
 void pid_init(PIDController *pid) {
+    printf("PID initializing...\n");
+    fflush(stdout);
     // clear controller variables
     pid->integrator = 0.0f;
     pid->differentiator = 0.0f;
     pid->prevError = 0.0f;
     pid->prevMeasurement = 0.0f;
     pid->out = 0.0f;
+    printf("PID initialized!\n");
+    fflush(stdout);
 }
 
 float pid_update(PIDController *pid, float setpoint, float measurement) {

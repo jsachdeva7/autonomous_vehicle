@@ -3,4 +3,5 @@
 
 void print_hello() {
     printf("Hello from helper.c!\n");
+    fflush(stdout);
 }

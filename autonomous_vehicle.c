@@ -7,7 +7,6 @@
 #include <webots/lidar.h>
 #include <webots/robot.h>
 #include <webots/vehicle/driver.h>
-#include <webots/display.h>
 
 // c imports
 #include <math.h>
@@ -16,8 +15,9 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+
 // custom file imports
-// #include "pid.h"
+#include "pid.h"
 #include "autonomous_vehicles.h"
 #include "helper.h"
 
@@ -67,9 +67,11 @@ const unsigned char lane_color[] = {156, 156, 156};
 int white = 0xFFFFFF;
 
 // PID Controller
-// PIDController steering_pid;
+PIDController *steering_pid = NULL;  // Declare as NULL initially
 
 void init() {
+  printf("init() happening...\n");
+  fflush(stdout);
   wbu_driver_init();
   
   // Initialize display
@@ -93,18 +95,24 @@ void init() {
   wbu_driver_set_antifog_lights(true);
   wbu_driver_set_wiper_mode(SLOW);
 
-  // // Initialize PID controller
-  // steering_pid->kp = 2.0f;
-  // steering_pid->ki = 0.1f;
-  // steering_pid->kd = 0.5f;
-  // steering_pid->T = 0.05f;
-  // steering_pid->tau = 0.02f;
-  // steering_pid->limMin = -0.5f;
-  // steering_pid->limMax = 0.5f;
+  // Initialize PID controller
+  steering_pid = malloc(sizeof(PIDController));
+  if (steering_pid == NULL) {
+    printf("Error: Failed to allocate memory for PID controller\n");
+    exit(1);  // Handle memory allocation failure
+  }
+  
+  steering_pid->kp = 2.0f;
+  steering_pid->ki = 0.1f;
+  steering_pid->kd = 0.5f;
+  steering_pid->T = 0.05f;
+  steering_pid->tau = 0.02f;
+  steering_pid->limMin = -0.5f;
+  steering_pid->limMax = 0.5f;
 }
 
 void set_steering_angle(double desired_angle) {
-  double steering_adjustment = desired_angle - steering_angle;
+  double steering_adjustment = pid_update(steering_pid, desired_angle, steering_angle);
   
   // Apply the adjustment, ensure within max change per step
   if (steering_adjustment > 0.1) {
@@ -240,8 +248,8 @@ void reset_display() {
 
 int main(void) {
   print_hello();
-  // pid_init(&steering_pid);
   init();
+  pid_init(steering_pid);
   set_speed(30.0);
 
   // main loop
@@ -260,6 +268,7 @@ int main(void) {
   }
 
   wbu_driver_cleanup();
+  free(steering_pid);
 
   return 0;  
 }
