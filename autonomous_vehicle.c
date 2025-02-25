@@ -9,7 +9,6 @@
 #include <webots/vehicle/driver.h>
 #include <webots/display.h>
 
-
 // c imports
 #include <math.h>
 #include <stdio.h>
@@ -18,7 +17,8 @@
 #include <stddef.h>
 
 // custom file imports
-#include <autonomous_vehicles.h>
+#include "pid.h"
+#include "autonomous_vehicles.h"
 
 // to be used as array indices
 enum { X, Y, Z };
@@ -65,7 +65,10 @@ const unsigned char yellow[] = {95, 187, 203};
 const unsigned char lane_color[] = {156, 156, 156};
 int white = 0xFFFFFF;
 
-void init() {
+// PID Controller
+PIDController steering_pid;
+
+void init(PIDController* steering_pid) {
   wbu_driver_init();
   
   // Initialize display
@@ -88,21 +91,38 @@ void init() {
   wbu_driver_set_dipped_beams(true);
   wbu_driver_set_antifog_lights(true);
   wbu_driver_set_wiper_mode(SLOW);
+
+  // Initialize PID controller
+  steering_pid->kp = 2.0f;
+  steering_pid->ki = 0.1f;
+  steering_pid->kd = 0.5f;
+  steering_pid->T = 0.05f;
+  steering_pid->tau = 0.02f;
+  steering_pid->limMin = -0.5f;
+  steering_pid->limMax = 0.5f;
 }
 
 void set_steering_angle(double desired_angle) {
-  double steering_change = desired_angle - steering_angle;
-  if (steering_change > 0) {
-    steering_change = (steering_change > 0.1) ? 0.1 : steering_change;
-  } else if (steering_change < 0) {
-    steering_change = (steering_change < -0.1) ? -0.1 : steering_change;
+  double steering_adjustment = pid_update(&steering_pid, desired_angle, steering_angle);
+  
+  // Apply the adjustment, ensure within max change per step
+  if (steering_adjustment > 0.1) {
+    steering_adjustment = 0.1;
+  } else if (steering_adjustment < -0.1) {
+      steering_adjustment = -0.1;
   }
-  steering_angle += steering_change;
+
+  // Update steering angle w/ PID correction
+  steering_angle += steering_adjustment;
+
+  // Clamp steering angle to vehicle limits
   if (steering_angle > 0.5) {
     steering_angle = 0.5;
   } else if (steering_angle < -0.5) {
     steering_angle = -0.5;
   }
+
+  // Apply steering angle
   wbu_driver_set_steering_angle(steering_angle);
 }
 
@@ -217,9 +237,9 @@ void reset_display() {
   wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
 }
 
-int main(int argc, char **argv) {
-  init();
-
+int main(void) {
+  pid_init(&steering_pid);
+  init(&steering_pid);
   set_speed(30.0);
 
   // main loop
@@ -239,5 +259,5 @@ int main(int argc, char **argv) {
 
   wbu_driver_cleanup();
 
-  return 0;  // ignored
+  return 0;  
 }
