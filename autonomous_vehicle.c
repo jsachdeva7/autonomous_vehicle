@@ -102,9 +102,9 @@ void init() {
     exit(1);  // Handle memory allocation failure
   }
   
-  steering_pid->kp = 2.0f;
-  steering_pid->ki = 0.1f;
-  steering_pid->kd = 0.5f;
+  steering_pid->kp = 20.0f;
+  steering_pid->ki = 0.0f;
+  steering_pid->kd = 0.0f;
   steering_pid->T = 0.05f;
   steering_pid->tau = 0.02f;
   steering_pid->limMin = -0.5f;
