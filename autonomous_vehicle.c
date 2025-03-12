@@ -63,7 +63,7 @@ bool autodrive = true;
 
 // color constants
 const unsigned char yellow[] = {95, 187, 203};
-const unsigned char lane_color[] = {156, 156, 156};
+const unsigned char lane_color[] = {120, 120, 120};
 int white = 0xFFFFFF;
 
 // PID Controller
@@ -102,9 +102,9 @@ void init() {
     exit(1);  // Handle memory allocation failure
   }
   
-  steering_pid->kp = 20.0f;
+  steering_pid->kp = 16.0f;
   steering_pid->ki = 0.0f;
-  steering_pid->kd = 0.0f;
+  steering_pid->kd = 0.5f;
   steering_pid->T = 0.05f;
   steering_pid->tau = 0.02f;
   steering_pid->limMin = -0.5f;
@@ -140,7 +140,7 @@ void set_speed(double desired_speed) {
   wbu_driver_set_cruising_speed(desired_speed);
 }
 
-double stay_in_lane_angle(const unsigned char *camera_image) {
+double stay_in_lane_angle(const unsigned char *camera_image) { 
   // First, create a new image from the camera data
   WbImageRef camera_frame = wb_display_image_new(main_display, camera_width, camera_height, camera_image, WB_IMAGE_BGRA);
   
@@ -158,43 +158,57 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
 
   int magenta = 0xFF00FF;
   int cyan = 0xFFFF00;
+  int red = 0xFF6557;
 
   const unsigned char *pixel_data = camera_image;
 
   // Only look at bottom third of image
   int start_y = (camera_height * 2) / 3;  // bottom third instead of half
 
+  // Draw part of camera scanned over:
+  int height_from_top = camera_height / 4;
+  int height_from_bot = camera_height / 8;
+  wb_display_set_color(main_display, red);
+  wb_display_draw_line(main_display,
+                      0, camera_height - height_from_bot,
+                      camera_width / 2, height_from_top);
+  wb_display_draw_line(main_display,
+                      camera_width, camera_height - height_from_bot,
+                      camera_width / 2, height_from_top);
+  // wb_display_draw_line(main_display, 
+  // (int)lane_avg_x, camera_height,          // bottom point
+  // vanishing_x, start_y); // top point
+
   // First pass: find yellow line position
   for (int y = start_y; y < camera_height; y++) {
     for (int x = 0; x < camera_width; x++) {
       int i = y * camera_width + x;
-      if (is_yellow(&pixel_data[i * 4])) {
+      if (is_valid_yellow(&pixel_data[i * 4], x, y, pixel_data)) {
         yellow_pixels++;
         sum_x_yellow += x;
         wb_display_set_color(main_display, magenta);
         wb_display_draw_pixel(main_display, x, y);
       }
     }
-  }
-
-  if (yellow_pixels == 0)
-    return UNKNOWN;
+}
 
   // Calculate average yellow line position
-  double yellow_avg_x = (double)sum_x_yellow / yellow_pixels;
+  double yellow_avg_x = (yellow_pixels > 0) ? (double)sum_x_yellow / yellow_pixels : -1;
   
-  // Draw yellow line indicator
+  // Draw yellow line indicator if detected
   int vanishing_x = camera_width / 2;
-  wb_display_set_color(main_display, magenta);
-  wb_display_draw_line(main_display, 
-                      (int)yellow_avg_x, camera_height,        // bottom point
-                      vanishing_x, start_y);                   // top point at vanishing point
+  if (yellow_avg_x != -1) {
+    wb_display_set_color(main_display, magenta);
+    wb_display_draw_line(main_display, 
+                        (int)yellow_avg_x, camera_height,        // bottom point
+                        vanishing_x, start_y);                   // top point at vanishing point
+  }
 
   // Second pass: only count lane markings to the right of average yellow position
   for (int y = start_y; y < camera_height; y++) {
     for (int x = 0; x < camera_width; x++) {
       int i = y * camera_width + x;
-      if (x > yellow_avg_x && is_lane_color(&pixel_data[i * 4])) {
+      if ((yellow_avg_x == -1 || x > yellow_avg_x) && is_valid_lane_color(&pixel_data[i * 4], x, y, pixel_data)) {
         lane_pixels++;
         wb_display_set_color(main_display, cyan);
         wb_display_draw_pixel(main_display, x, y);
@@ -203,42 +217,83 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
     }
   }
 
-  if (lane_pixels == 0)
-    return UNKNOWN;
-
   // Calculate average x position for lane
-  double lane_avg_x = (double)sum_x_lane / lane_pixels;
+  double lane_avg_x = (lane_pixels > 0) ? (double)sum_x_lane / lane_pixels : -1;
   
-  // Draw white lane indicator
-  wb_display_set_color(main_display, cyan);
-  wb_display_draw_line(main_display, 
-                      (int)lane_avg_x, camera_height,          // bottom point
-                      vanishing_x, start_y);                   // top point at vanishing point
+  // Draw white lane indicator if detected
+  if (lane_avg_x != -1) {
+    wb_display_set_color(main_display, cyan);
+    wb_display_draw_line(main_display, 
+                        (int)lane_avg_x, camera_height,          // bottom point
+                        vanishing_x, start_y);                   // top point at vanishing point
+  }
 
-  // Continue with your existing calculations
-  lane_avg_x = lane_avg_x / camera_width;
-  double yellow_avg_x_normalized = yellow_avg_x / camera_width;
+  printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
+
+  // Handle missing lane lines
+  double target_x;
+  double correction_factor = -1.2;
   
-  // Target position should be closer to the lane marking than the yellow line
-  double target_x = (0.4 * yellow_avg_x_normalized + 0.6 * lane_avg_x);
-  
+  if (yellow_avg_x == -1 && lane_avg_x == -1) {
+    return UNKNOWN;  // No lane lines detected
+  } else if (yellow_avg_x == -1) {
+    target_x = correction_factor * lane_avg_x / camera_width;  // Use only the white lane
+  } else if (lane_avg_x == -1) {
+    if (yellow_pixels < 10) {
+      return UNKNOWN;
+    }
+    target_x = correction_factor * yellow_avg_x / camera_width;  // Use only the yellow lane
+  } else {
+    target_x = (0.4 * (yellow_avg_x / camera_width) + 0.6 * (lane_avg_x / camera_width));
+  }
+
   // Convert to angle
   return (target_x - 0.5) * camera_fov;
 }
 
 bool is_lane_color(const unsigned char* pixel) {
-    bool bool_array[3] = {false, false, false};
-    for (int i = 0; i < 3; ++i) {
-        if (pixel[i] - lane_color[i] > 0 && pixel[i] - lane_color[i] < 50) {
-            bool_array[i] = true;
-        }
+  bool bool_array[3] = {false, false, false};
+  for (int i = 0; i < 3; ++i) {
+    if (pixel[i] - lane_color[i] > 0 && pixel[i] - lane_color[i] < 50) {
+      bool_array[i] = true;
     }
-    return bool_array[0] && bool_array[1] && bool_array[2];
+  }
+  return bool_array[0] && bool_array[1] && bool_array[2];
+}
+
+bool is_valid_lane_color(const unsigned char* pixel, int x, int y, const unsigned char* image) {
+  if (!is_lane_color(pixel)) return false;
+
+  // Count how many "lane" pixels are nearby horizontally
+  int lane_pixel_width = 0;
+  for (int dx = -5; dx <=5; dx++) {
+    int nx = x + dx;
+    if (nx >= 0 && nx < camera_width && is_yellow(&image[(y * camera_width + nx) * 4])) {
+      lane_pixel_width++;
+    }
+  }
+
+  return lane_pixel_width < 6;
 }
 
 bool is_yellow(const unsigned char* pixel) {
   int color_diff = abs(pixel[0] - yellow[0]) + abs(pixel[1] - yellow[1]) + abs(pixel[2] - yellow[2]);
   return color_diff < 30;
+}
+
+bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned char* image) {
+  if (!is_yellow(pixel)) return false;
+
+  // Count how many yellow pixels are nearby horizontally
+  int yellow_width = 0;
+  for (int dx = -5; dx <= 5; dx++) { // Check ±5 pixels in X direction
+      int nx = x + dx;
+      if (nx >= 0 && nx < camera_width && is_yellow(&image[(y * camera_width + nx) * 4])) {
+        yellow_width++;
+      }
+  }
+
+  return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
 void reset_display() {
@@ -258,9 +313,7 @@ int main(void) {
     if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {
       const unsigned char * camera_data = wb_camera_get_image(camera);
       double new_steering_angle = stay_in_lane_angle(camera_data);
-      if (new_steering_angle != UNKNOWN) {
-        set_steering_angle(new_steering_angle);
-      }
+      set_steering_angle((new_steering_angle != UNKNOWN) ? new_steering_angle : 0);
       // printf("new_steering_angle: %f\n", new_steering_angle);
     }
 
