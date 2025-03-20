@@ -109,6 +109,10 @@ void init() {
   steering_pid->tau = 0.02f;
   steering_pid->limMin = -0.5f;
   steering_pid->limMax = 0.5f;
+
+  printf("-------\nEnabling GPS...\n");
+  wb_gps_enable(gps, TIME_STEP);
+  printf("GPS Enabled!\n");
 }
 
 void set_steering_angle(double desired_angle) {
@@ -228,7 +232,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
                         vanishing_x, start_y);                   // top point at vanishing point
   }
 
-  printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
+  // printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
 
   // Handle missing lane lines
   double target_x;
@@ -239,11 +243,16 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   } else if (yellow_avg_x == -1) {
     target_x = correction_factor * lane_avg_x / camera_width;  // Use only the white lane
   } else if (lane_avg_x == -1) {
+    // if (yellow_pixels < 10 && yellow_pixels > 30) {
     if (yellow_pixels < 10) {
       return UNKNOWN;
     }
     target_x = correction_factor * yellow_avg_x / camera_width;  // Use only the yellow lane
   } else {
+    // if (lane_pixels > 20) {
+    //   printf("Too many lane pixels! Ignoring lane line.");
+    //   return UNKNOWN;
+    // }
     target_x = (0.4 * (yellow_avg_x / camera_width) + 0.6 * (lane_avg_x / camera_width));
   }
 
@@ -295,6 +304,10 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
 
   return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
+
+// void check_for_signal() {
+//   if ()
+// }
 
 void reset_display() {
   wb_display_set_color(main_display, white);
