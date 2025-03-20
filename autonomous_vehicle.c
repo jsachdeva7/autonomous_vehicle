@@ -110,7 +110,8 @@ void init() {
   steering_pid->limMin = -0.5f;
   steering_pid->limMax = 0.5f;
 
-  printf("-------\nEnabling GPS...\n");
+  printf("-------Initializing GPS...\n");
+  gps = wb_robot_get_device("gps");
   wb_gps_enable(gps, TIME_STEP);
   printf("GPS Enabled!\n");
 }
@@ -324,6 +325,14 @@ int main(void) {
   while (wbu_driver_step() != -1) {
     static int i = 0;
     if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {
+      const double* gps_coords = wb_gps_get_values(gps);
+      if (gps_coords) {
+        printf("GPS Coordinates: X = %f, Y = %f\n",
+               gps_coords[0], gps_coords[1]);
+      } else {
+          printf("GPS data not available yet.\n");
+      }
+
       const unsigned char * camera_data = wb_camera_get_image(camera);
       double new_steering_angle = stay_in_lane_angle(camera_data);
       set_steering_angle((new_steering_angle != UNKNOWN) ? new_steering_angle : 0);
