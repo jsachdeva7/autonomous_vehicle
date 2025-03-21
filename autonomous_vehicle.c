@@ -29,6 +29,9 @@ enum { X, Y, Z };
 #define TIME_STEP 50
 #define UNKNOWN 99999.99
 
+#define PORT 5005
+#define BUFFER_SIZE 1024
+
 // camera
 WbDeviceTag camera;
 int camera_width;
@@ -312,8 +315,40 @@ void check_for_signal(double x, double y) {
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
     printf("Checking for traffic signal...\n");
-      wb_display_set_color(main_display, red);
-      wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
+    wb_display_set_color(main_display, red);
+    wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
+
+    // int sockfd;
+    // struct sockaddr_in serverAddr, clientAddr;
+    // char buffer[BUFFER_SIZE];
+    // socklen_t addr_size = sizeof(clientAddr);
+
+    //   // Create UDP socket
+    // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    // if (sockfd < 0) {
+    //     perror("Socket creation failed");
+    //     exit(EXIT_FAILURE);
+    // }
+
+    // // Bind socket to the port
+    // serverAddr.sin_family = AF_INET;
+    // serverAddr.sin_addr.s_addr = INADDR_ANY;
+    // serverAddr.sin_port = htons(PORT);
+    // bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+
+    // printf("Waiting for traffic light data...\n");
+
+    // while (1) {
+    //   recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&clientAddr, &addr_size);
+    //   buffer[strcspn(buffer, "\n")] = 0;  // Remove newline character
+
+    //   if (strlen(buffer) > 0) {
+    //     printf("Traffic Light Detected: %s\n", buffer);
+    //   }
+    // }
+
+    // close(sockfd);
+    // return 0;
   }
 }
 
