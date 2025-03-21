@@ -61,10 +61,15 @@ double steering_angle = 0.0;
 int manual_steering = 0;
 bool autodrive = true;
 
-// color constants
-const unsigned char yellow[] = {95, 187, 203};
-const unsigned char lane_color[] = {120, 120, 120};
+// rgb constants
+const unsigned char yellow[] = {109, 194, 208};
+const unsigned char lane_color[] = {190, 190, 190};
+
+// hex constants
 int white = 0xFFFFFF;
+int magenta = 0xFF00FF;
+int cyan = 0xFFFF00;
+int red = 0xFF6557;
 
 // PID Controller
 PIDController *steering_pid = NULL;  // Declare as NULL initially
@@ -161,10 +166,6 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   int yellow_pixels = 0;
   int sum_x_yellow = 0;
 
-  int magenta = 0xFF00FF;
-  int cyan = 0xFFFF00;
-  int red = 0xFF6557;
-
   const unsigned char *pixel_data = camera_image;
 
   // Only look at bottom third of image
@@ -233,7 +234,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
                         vanishing_x, start_y);                   // top point at vanishing point
   }
 
-  // printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
+  printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
 
   // Handle missing lane lines
   double target_x;
@@ -306,9 +307,15 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
   return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
-// void check_for_signal() {
-//   if ()
-// }
+void check_for_signal(double x, double y) {
+  bool within_y = y > -70 && y < -55;
+  bool within_x = x < 48.5 && x > 46.5;
+  if (within_x && within_y) {
+    printf("Checking for traffic signal...\n");
+      wb_display_set_color(main_display, red);
+      wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
+  }
+}
 
 void reset_display() {
   wb_display_set_color(main_display, white);
@@ -326,17 +333,18 @@ int main(void) {
     static int i = 0;
     if (i % (int)(TIME_STEP / wb_robot_get_basic_time_step()) == 0) {
       const double* gps_coords = wb_gps_get_values(gps);
-      if (gps_coords) {
-        printf("GPS Coordinates: X = %f, Y = %f\n",
-               gps_coords[0], gps_coords[1]);
-      } else {
-          printf("GPS data not available yet.\n");
-      }
-
       const unsigned char * camera_data = wb_camera_get_image(camera);
       double new_steering_angle = stay_in_lane_angle(camera_data);
       set_steering_angle((new_steering_angle != UNKNOWN) ? new_steering_angle : 0);
       // printf("new_steering_angle: %f\n", new_steering_angle);
+      
+      if (gps_coords) {
+        // printf("GPS Coordinates: X = %f, Y = %f\n",
+        //        gps_coords[0], gps_coords[1]);
+        check_for_signal(gps_coords[0], gps_coords[1]);
+      } else {
+          printf("GPS data not available yet.\n");
+      }
     }
 
     ++i;

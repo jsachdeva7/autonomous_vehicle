@@ -10,6 +10,7 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
 double stay_in_lane_angle(const unsigned char *camera_data);
 void set_speed(double desired_speed);
 void set_steering_angle(double desired_angle);
+void check_for_signal(double x, double y);
 void init();
 
 #endif /* AUTONOMOUS_VEHICLES_H */
