@@ -14,6 +14,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <unistd.h>
+#include <sys/types.h>   // For socket(), bind()
+#include <winsock2.h>  // For socket(), bind(), recvfrom()
+#include <ws2tcpip.h>  // For additional networking functions
+#include <fcntl.h>       // For fcntl(), O_NONBLOCK
 
 
 // custom file imports
@@ -76,6 +81,11 @@ int red = 0xFF6557;
 
 // PID Controller
 PIDController *steering_pid = NULL;  // Declare as NULL initially
+
+// UDP stuff
+int sockfd;  // Global socket descriptor for reuse
+struct sockaddr_in serverAddr, clientAddr;
+int addr_size = sizeof(clientAddr);
 
 void init() {
   printf("init() happening...\n");
@@ -196,7 +206,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
         yellow_pixels++;
         sum_x_yellow += x;
         wb_display_set_color(main_display, magenta);
-        wb_display_draw_pixel(main_display, x, y);
+        // wb_display_draw_pixel(main_display, x, y);
       }
     }
 }
@@ -204,14 +214,14 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   // Calculate average yellow line position
   double yellow_avg_x = (yellow_pixels > 0) ? (double)sum_x_yellow / yellow_pixels : -1;
   
-  // Draw yellow line indicator if detected
-  int vanishing_x = camera_width / 2;
-  if (yellow_avg_x != -1) {
-    wb_display_set_color(main_display, magenta);
-    wb_display_draw_line(main_display, 
-                        (int)yellow_avg_x, camera_height,        // bottom point
-                        vanishing_x, start_y);                   // top point at vanishing point
-  }
+  // // Draw yellow line indicator if detected
+  // int vanishing_x = camera_width / 2;
+  // if (yellow_avg_x != -1) {
+  //   wb_display_set_color(main_display, magenta);
+  //   wb_display_draw_line(main_display, 
+  //                       (int)yellow_avg_x, camera_height,        // bottom point
+  //                       vanishing_x, start_y);                   // top point at vanishing point
+  // }
 
   // Second pass: only count lane markings to the right of average yellow position
   for (int y = start_y; y < camera_height; y++) {
@@ -220,7 +230,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
       if ((yellow_avg_x == -1 || x > yellow_avg_x) && is_valid_lane_color(&pixel_data[i * 4], x, y, pixel_data)) {
         lane_pixels++;
         wb_display_set_color(main_display, cyan);
-        wb_display_draw_pixel(main_display, x, y);
+        // wb_display_draw_pixel(main_display, x, y);
         sum_x_lane += x;
       }
     }
@@ -229,15 +239,15 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   // Calculate average x position for lane
   double lane_avg_x = (lane_pixels > 0) ? (double)sum_x_lane / lane_pixels : -1;
   
-  // Draw white lane indicator if detected
-  if (lane_avg_x != -1) {
-    wb_display_set_color(main_display, cyan);
-    wb_display_draw_line(main_display, 
-                        (int)lane_avg_x, camera_height,          // bottom point
-                        vanishing_x, start_y);                   // top point at vanishing point
-  }
+  // // Draw white lane indicator if detected
+  // if (lane_avg_x != -1) {
+  //   wb_display_set_color(main_display, cyan);
+  //   wb_display_draw_line(main_display, 
+  //                       (int)lane_avg_x, camera_height,          // bottom point
+  //                       vanishing_x, start_y);                   // top point at vanishing point
+  // }
 
-  printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
+  // printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
 
   // Handle missing lane lines
   double target_x;
@@ -310,46 +320,68 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
   return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
+void initialize_udp_socket() {
+  WSADATA wsaData;
+
+  // Initialize Winsock
+  int wsa_result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (wsa_result != 0) {
+    printf("WSAStartup failed with error: %d\n", wsa_result);
+    exit(EXIT_FAILURE);
+  }
+  
+  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  if (sockfd < 0) {
+    printf("Socket creation failed: %d\n", WSAGetLastError());
+    exit(EXIT_FAILURE);
+  }
+
+  u_long mode = 1;
+  if (ioctlsocket(sockfd, FIONBIO, &mode) != 0) {
+    printf("Failed to set non-blocking mode, error: %d\n", WSAGetLastError());
+    closesocket(sockfd);
+    WSACleanup();
+    exit(EXIT_FAILURE);
+  }
+
+  // Bind socket
+  serverAddr.sin_family = AF_INET;
+  serverAddr.sin_addr.s_addr = INADDR_ANY;
+  serverAddr.sin_port = htons(PORT);
+
+  if (bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) < 0) {
+    printf("Bind failed with error: %d\n", WSAGetLastError());
+    exit(EXIT_FAILURE);
+  }
+
+  printf("UDP listener initialized on port %d\n", PORT);
+}
+
 void check_for_signal(double x, double y) {
   bool within_y = y > -70 && y < -55;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
     printf("Checking for traffic signal...\n");
+
     wb_display_set_color(main_display, red);
     wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
 
-    // int sockfd;
-    // struct sockaddr_in serverAddr, clientAddr;
-    // char buffer[BUFFER_SIZE];
-    // socklen_t addr_size = sizeof(clientAddr);
+    char buffer[BUFFER_SIZE];
 
-    //   // Create UDP socket
-    // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // if (sockfd < 0) {
-    //     perror("Socket creation failed");
-    //     exit(EXIT_FAILURE);
-    // }
+    // Try to receive data (non-blocking)
+    int bytes_received = recvfrom(sockfd, buffer, BUFFER_SIZE - 1, 0,
+                                  (struct sockaddr*)&clientAddr, &addr_size);
 
-    // // Bind socket to the port
-    // serverAddr.sin_family = AF_INET;
-    // serverAddr.sin_addr.s_addr = INADDR_ANY;
-    // serverAddr.sin_port = htons(PORT);
-    // bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
-
-    // printf("Waiting for traffic light data...\n");
-
-    // while (1) {
-    //   recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&clientAddr, &addr_size);
-    //   buffer[strcspn(buffer, "\n")] = 0;  // Remove newline character
-
-    //   if (strlen(buffer) > 0) {
-    //     printf("Traffic Light Detected: %s\n", buffer);
-    //   }
-    // }
-
-    // close(sockfd);
-    // return 0;
+    if (bytes_received > 0) {
+      buffer[bytes_received] = '\0';  // Null-terminate received string
+      printf("Traffic Light Detected: %s\n", buffer);
+    }
   }
+}
+
+void cleanup_udp_socket() {
+  closesocket(sockfd);
+  WSACleanup();
 }
 
 void reset_display() {
@@ -362,6 +394,7 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
+  initialize_udp_socket();
 
   // main loop
   while (wbu_driver_step() != -1) {
@@ -387,6 +420,7 @@ int main(void) {
 
   wbu_driver_cleanup();
   free(steering_pid);
+  cleanup_udp_socket();
 
   return 0;  
 }

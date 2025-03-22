@@ -30,6 +30,7 @@ while True:
     lights = detect_traffic_light(frame)
 
     if lights:
+        print(f"Detected: {lights}") # debug print
         message = ",".join(lights)
         sock.sendto(message.encode(), server_address)
 

@@ -34,7 +34,7 @@ CC = gcc
 CFLAGS = -Wall -Wextra -O2 -I$(WEBOTS_HOME_PATH)/include/controller/c -I.
 
 # Libraries
-LIBRARIES = -ldriver -lcar
+LIBRARIES = -ldriver -lcar -lWs2_32
 
 # Output executable
 TARGET = build/release/autonomous_vehicle.exe
