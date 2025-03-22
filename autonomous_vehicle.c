@@ -15,7 +15,6 @@
 #include <stdlib.h>
 #include <stddef.h>
 
-
 // custom file imports
 #include "pid.h"
 #include "autonomous_vehicles.h"
@@ -23,7 +22,6 @@
 
 // to be used as array indices
 enum { X, Y, Z };
-
 
 // constants
 #define TIME_STEP 50
@@ -317,38 +315,6 @@ void check_for_signal(double x, double y) {
     printf("Checking for traffic signal...\n");
     wb_display_set_color(main_display, red);
     wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
-
-    // int sockfd;
-    // struct sockaddr_in serverAddr, clientAddr;
-    // char buffer[BUFFER_SIZE];
-    // socklen_t addr_size = sizeof(clientAddr);
-
-    //   // Create UDP socket
-    // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-    // if (sockfd < 0) {
-    //     perror("Socket creation failed");
-    //     exit(EXIT_FAILURE);
-    // }
-
-    // // Bind socket to the port
-    // serverAddr.sin_family = AF_INET;
-    // serverAddr.sin_addr.s_addr = INADDR_ANY;
-    // serverAddr.sin_port = htons(PORT);
-    // bind(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
-
-    // printf("Waiting for traffic light data...\n");
-
-    // while (1) {
-    //   recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr*)&clientAddr, &addr_size);
-    //   buffer[strcspn(buffer, "\n")] = 0;  // Remove newline character
-
-    //   if (strlen(buffer) > 0) {
-    //     printf("Traffic Light Detected: %s\n", buffer);
-    //   }
-    // }
-
-    // close(sockfd);
-    // return 0;
   }
 }
 
