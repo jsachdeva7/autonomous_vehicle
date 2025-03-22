@@ -21,14 +21,20 @@ def detect_traffic_light(image_bytes, width, height):
     detected_lights = []
 
     for result in results:
-        if not hasattr(result, "boxes"):
+        if not hasattr(result, "boxes") or result.boxes is None:
+            print("No bounding boxes detected.")
             continue
 
         for box in result.boxes:
             cls = int(box.cls[0]) # get class index
-            label = model.names[cls] if isinstance(model.names, dict) else model.names[int(cls)]
-            
-            if label in ["red_light", "green_light", "yellow_light"]:
+
+            if isinstance(model.names, dict):
+                label = model.names.get(cls, "unknown")
+            else:
+                label = model.names[cls] if cls < len(model.names) else "unknown"
+
+            if label in ["red", "green", "yellow"]:
                 detected_lights.append(label)
 
-    return ",".join(detected_lights) if detected_lights else "none"
+    result_str = ",".join(detected_lights) if detected_lights else "none"
+    return result_str

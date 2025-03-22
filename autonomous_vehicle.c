@@ -316,7 +316,7 @@ void check_for_signal(double x, double y) {
   bool within_y = y > -70 && y < -55;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
-    printf("Checking for traffic signal...\n");
+    // printf("Checking for traffic signal...\n");
     
     const unsigned char *image = wb_camera_get_image(camera);
     if (!image) {
