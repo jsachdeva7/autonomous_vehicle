@@ -312,11 +312,10 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
   return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
-void check_for_signal(double x, double y, PyObject *pModule) {
+void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer *buffer) {
   bool within_y = y > -75 && y < -66;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
-    // printf("Checking for traffic signal...\n");
     
     const unsigned char *image = wb_camera_get_image(camera);
     if (!image) {
@@ -356,8 +355,34 @@ void check_for_signal(double x, double y, PyObject *pModule) {
 
     if (pValue) {
       const char *result = PyUnicode_AsUTF8(pValue);
-      printf("Detected Traffic Light: %s\n", result);
       Py_DECREF(pValue);
+
+      printf("Detected Traffic Light: %s\n", result);
+      
+      if (strcmp(result, "red") == 0) {
+        buffer->red_count++;
+      } else if (strcmp(result, "green") == 0) {
+        buffer->green_count++;
+      } else if (strcmp(result, "yellow") == 0) {
+        buffer->yellow_count++;
+      }
+
+      if (buffer->red_count >= 3) {
+        printf("Decision: STOP (Red light detected 3 times)\n");
+        // Implement stop behavior here (e.g., set speed to 0)
+      } else if (buffer->green_count >= 3) {
+        printf("Decision: GO (Green light detected 3 times)\n");
+        // Implement go behavior here (e.g., maintain or increase speed)
+      } else if (buffer->yellow_count >= 3) {
+        printf("Decision: CAUTION (Yellow light detected 3 times)\n");
+        // Implement caution behavior here (e.g., slow down)
+      } else {
+        return;
+      }
+      buffer->red_count = 0;
+      buffer->yellow_count = 0;
+      buffer->green_count = 0;
+
     } else {
       PyErr_Print();
       printf("Error: Function call failed.\n");
@@ -408,6 +433,8 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
+  TrafficLightBuffer tl_buffer = {0, 0, 0};
+
   PyObject* yolo_inference = initialize_python();
   if (!yolo_inference) {
     printf("Python initialization failed.\n");
@@ -449,7 +476,7 @@ int main(void) {
       if (gps_coords) {
         // printf("GPS Coordinates: X = %f, Y = %f\n",
         //        gps_coords[0], gps_coords[1]);
-        check_for_signal(gps_coords[0], gps_coords[1], yolo_inference);
+        check_for_signal(gps_coords[0], gps_coords[1], yolo_inference, &tl_buffer);
       } else {
           printf("GPS data not available yet.\n");
       }
