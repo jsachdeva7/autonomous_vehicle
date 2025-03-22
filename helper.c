@@ -2,6 +2,6 @@
 #include "helper.h"
 
 void print_hello() {
-    printf("Hello from helper.c!\n");
+    // printf("Hello from helper.c!\n");
     fflush(stdout);
 }

@@ -15,6 +15,9 @@
 #include <stdlib.h>
 #include <stddef.h>
 
+// Python
+#include <Python.h>
+
 // custom file imports
 #include "pid.h"
 #include "autonomous_vehicles.h"
@@ -26,9 +29,6 @@ enum { X, Y, Z };
 // constants
 #define TIME_STEP 50
 #define UNKNOWN 99999.99
-
-#define PORT 5005
-#define BUFFER_SIZE 1024
 
 // camera
 WbDeviceTag camera;
@@ -76,7 +76,7 @@ int red = 0xFF6557;
 PIDController *steering_pid = NULL;  // Declare as NULL initially
 
 void init() {
-  printf("init() happening...\n");
+  // printf("init() happening...\n");
   fflush(stdout);
   wbu_driver_init();
   
@@ -116,10 +116,10 @@ void init() {
   steering_pid->limMin = -0.5f;
   steering_pid->limMax = 0.5f;
 
-  printf("-------Initializing GPS...\n");
+  // printf("-------Initializing GPS...\n");
   gps = wb_robot_get_device("gps");
   wb_gps_enable(gps, TIME_STEP);
-  printf("GPS Enabled!\n");
+  // printf("GPS Enabled!\n");
 }
 
 void set_steering_angle(double desired_angle) {
@@ -235,7 +235,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
                         vanishing_x, start_y);                   // top point at vanishing point
   }
 
-  printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
+  // printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
 
   // Handle missing lane lines
   double target_x;
@@ -323,11 +323,42 @@ void reset_display() {
   wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
 }
 
+int initialize_python() {
+  PyStatus status;
+  PyConfig config;
+  PyConfig_InitPythonConfig(&config);
+
+  // Set Python home (replace with your actual path)
+  status = PyConfig_SetString(&config, &config.home, L"C:/Users/Jagat Sachdeva/AppData/Local/Programs/Python/Python312");
+  if (PyStatus_Exception(status)) {
+    PyConfig_Clear(&config);
+    return 1;
+  }
+
+  // Initialize Python with the modified configuration
+  status = Py_InitializeFromConfig(&config);
+  PyConfig_Clear(&config);
+  if (PyStatus_Exception(status)) {
+    return 1;
+  }
+
+  // Run Python code
+  PyRun_SimpleString("import sys; sys.stdout = sys.__stdout__");
+  PyRun_SimpleString("print('Hello from Python inside C!'); sys.stdout.flush()");
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+
+  // Finalize Python
+  return 0;  
+}
+
 int main(void) {
   print_hello();
   init();
   pid_init(steering_pid);
   set_speed(30.0);
+  printf("Python initialization finished with exit code: %d\n", initialize_python());
 
   // main loop
   while (wbu_driver_step() != -1) {
@@ -353,6 +384,7 @@ int main(void) {
 
   wbu_driver_cleanup();
   free(steering_pid);
+  Py_Finalize();
 
   return 0;  
 }

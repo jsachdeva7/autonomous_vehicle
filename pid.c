@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 void pid_init(PIDController *pid) {
-    printf("PID initializing...\n");
+    // printf("PID initializing...\n");
     fflush(stdout);
     // clear controller variables
     pid->integrator = 0.0f;
@@ -10,7 +10,7 @@ void pid_init(PIDController *pid) {
     pid->prevError = 0.0f;
     pid->prevMeasurement = 0.0f;
     pid->out = 0.0f;
-    printf("PID initialized!\n");
+    // printf("PID initialized!\n");
     fflush(stdout);
 }
 

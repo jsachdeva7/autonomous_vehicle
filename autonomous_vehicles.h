@@ -12,5 +12,6 @@ void set_speed(double desired_speed);
 void set_steering_angle(double desired_angle);
 void check_for_signal(double x, double y);
 void init();
+int initialize_python();
 
 #endif /* AUTONOMOUS_VEHICLES_H */
