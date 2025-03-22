@@ -18,6 +18,10 @@
 // Python
 #include <Python.h>
 
+// // Open CV
+// #include <opencv2/opencv.hpp>
+// #include <opencv2/imgcodecs.hpp>
+
 // custom file imports
 #include "pid.h"
 #include "autonomous_vehicles.h"
@@ -313,8 +317,61 @@ void check_for_signal(double x, double y) {
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
     printf("Checking for traffic signal...\n");
-    wb_display_set_color(main_display, red);
-    wb_display_fill_rectangle(main_display, camera_width - 10, 10, 5, 5);
+    
+    const unsigned char *image = wb_camera_get_image(camera);
+    if (!image) {
+      printf("Could not capture image.\n");
+      return;
+    }
+
+    // // Converts Webots BGRA image to BGR
+    // IplImage *img = cvCreateImage(cvSize(camera_width, camera_height), IPL_DEPTH_8U, 4);
+    // memcpy(img->imageData, image, camera_width * camera_height * 4);
+    // IplImage *bgr_img = cvCreateImage(cvSize(camera_width, camera_height), IPL_DEPTH_8U, 3);
+    // cvCvtColor(img, bgr_img, CV_RGBA2BGR);
+
+    // // Clean up OpenCV memory
+    // cvSaveImage("traffic_light.jpg", bgr_img, 0);
+
+    // // Clean up OpenCV memory
+    // cvReleaseImage(&img);
+    // cvReleaseImage(&bgr_img);
+
+    // // Call YOLO model in Python
+    // PyObject *pModule = PyImport_ImportModule("yolo_inference");
+    // if (!pModule) {
+    //   PyErr_Print();
+    //   printf("Error: Failed to import yolo_inference.py\n");
+    //   return;
+    // }
+
+    // PyObject *pFunc = PyObject_GetAttrString(pModule, "detect_traffic_light");
+    // if (!pFunc || !PyCallable_Check(pFunc)) {
+    //     PyErr_Print();
+    //     printf("Error: Failed to load function detect_traffic_light\n");
+    //     Py_XDECREF(pFunc);
+    //     Py_DECREF(pModule);
+    //     return;
+    // }
+
+    // // Call detect_traffic_light("traffic_light.jpg")
+    // PyObject *pArgs = PyTuple_Pack(1, PyUnicode_FromString("traffic_light.jpg"));
+    // PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
+
+    // Py_DECREF(pArgs);
+
+    // if (pValue) {
+    //   const char *result = PyUnicode_AsUTF8(pValue);
+    //   printf("Detected Traffic Light: %s\n", result);
+    //   Py_DECREF(pValue);
+    // } else {
+    //     PyErr_Print();
+    //     printf("Error: Function call failed.\n");
+    // }
+    
+    // // Clean up
+    // Py_DECREF(pFunc);
+    // Py_DECREF(pModule);
   }
 }
 
