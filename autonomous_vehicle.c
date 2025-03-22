@@ -313,10 +313,13 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
 }
 
 void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer *buffer) {
+  if (strcmp(buffer->decision, "green") == 0 || strcmp(buffer->decision, "red") == 0) {
+    return;
+  }
+
   bool within_y = y > -75 && y < -66;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
-    
     const unsigned char *image = wb_camera_get_image(camera);
     if (!image) {
       printf("Could not capture image.\n");
@@ -334,10 +337,10 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
     // Convert raw image data to Python bytes object
     PyObject *pBytes = PyBytes_FromStringAndSize((const char *)image, camera_width * camera_height * 4);
     if (!pBytes) {
-        PyErr_Print();
-        printf("Error: Failed to create Python bytes object\n");
-        Py_DECREF(pFunc);
-        return;
+      PyErr_Print();
+      printf("Error: Failed to create Python bytes object\n");
+      Py_DECREF(pFunc);
+      return;
     }
 
     PyObject *pWidth = PyLong_FromLong(camera_width);
@@ -367,18 +370,20 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
         buffer->yellow_count++;
       }
 
-      if (buffer->red_count >= 3) {
+      if (buffer->red_count >= 2) {
         printf("Decision: STOP (Red light detected 3 times)\n");
-        // Implement stop behavior here (e.g., set speed to 0)
-      } else if (buffer->green_count >= 3) {
+        strcpy(buffer->decision, "red");
+      } else if (buffer->green_count >= 2) {
         printf("Decision: GO (Green light detected 3 times)\n");
-        // Implement go behavior here (e.g., maintain or increase speed)
-      } else if (buffer->yellow_count >= 3) {
+        printf("Green decision made, stopping detection for now.\n");
+        strcpy(buffer->decision, "green");
+      } else if (buffer->yellow_count >= 2) {
         printf("Decision: CAUTION (Yellow light detected 3 times)\n");
-        // Implement caution behavior here (e.g., slow down)
+        strcpy(buffer->decision, "yellow");
       } else {
         return;
       }
+      
       buffer->red_count = 0;
       buffer->yellow_count = 0;
       buffer->green_count = 0;
@@ -433,7 +438,7 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
-  TrafficLightBuffer tl_buffer = {0, 0, 0};
+  TrafficLightBuffer tl_buffer = {0, 0, 0, "none"};
 
   PyObject* yolo_inference = initialize_python();
   if (!yolo_inference) {
@@ -474,9 +479,15 @@ int main(void) {
       // printf("new_steering_angle: %f\n", new_steering_angle);
       
       if (gps_coords) {
-        // printf("GPS Coordinates: X = %f, Y = %f\n",
-        //        gps_coords[0], gps_coords[1]);
         check_for_signal(gps_coords[0], gps_coords[1], yolo_inference, &tl_buffer);
+
+        if (strcmp(tl_buffer.decision, "red") == 0) {
+          set_speed(0.0);  // Stop the car
+        } else if (strcmp(tl_buffer.decision, "yellow") == 0) {
+          set_speed(10.0);  // Slow down
+        } else {
+          set_speed(30.0);  // Normal speed
+        }
       } else {
           printf("GPS data not available yet.\n");
       }

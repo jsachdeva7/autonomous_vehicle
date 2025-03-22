@@ -8,6 +8,7 @@ typedef struct {
     int red_count;
     int green_count;
     int yellow_count;
+    char decision[10];
 } TrafficLightBuffer;
 
 // Function prototypes
