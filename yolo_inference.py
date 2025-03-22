@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import cv2
 
-model = YOLO("best.pt")
+model = YOLO("best.pt", verbose=False)
 
 def detect_traffic_light(image_bytes, width, height):
     # Convert raw bytes to NumPy array
@@ -17,9 +17,9 @@ def detect_traffic_light(image_bytes, width, height):
         return "none"   
     
     # run YOLO inference
-    results = model(img_bgr)
+    results = model(img_bgr, verbose=False)
+    
     detected_lights = []
-
     for result in results:
         if not hasattr(result, "boxes") or result.boxes is None:
             print("No bounding boxes detected.")

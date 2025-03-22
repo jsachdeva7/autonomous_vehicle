@@ -313,7 +313,7 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
 }
 
 void check_for_signal(double x, double y) {
-  bool within_y = y > -70 && y < -55;
+  bool within_y = y > -75 && y < -66;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
     // printf("Checking for traffic signal...\n");
