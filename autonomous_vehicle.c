@@ -312,7 +312,7 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
   return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
-void check_for_signal(double x, double y) {
+void check_for_signal(double x, double y, PyObject *pModule) {
   bool within_y = y > -75 && y < -66;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
@@ -324,20 +324,11 @@ void check_for_signal(double x, double y) {
       return;
     }
 
-    // Call YOLO model in Python
-    PyObject *pModule = PyImport_ImportModule("yolo_inference");
-    if (!pModule) {
-      PyErr_Print();
-      printf("Error: Failed to import yolo_inference.py\n");
-      return;
-    }
-
     PyObject *pFunc = PyObject_GetAttrString(pModule, "detect_traffic_light");
     if (!pFunc || !PyCallable_Check(pFunc)) {
         PyErr_Print();
         printf("Error: Failed to load function detect_traffic_light\n");
         Py_XDECREF(pFunc);
-        Py_DECREF(pModule);
         return;
     }
 
@@ -347,7 +338,6 @@ void check_for_signal(double x, double y) {
         PyErr_Print();
         printf("Error: Failed to create Python bytes object\n");
         Py_DECREF(pFunc);
-        Py_DECREF(pModule);
         return;
     }
 
@@ -362,19 +352,16 @@ void check_for_signal(double x, double y) {
     Py_DECREF(pWidth);
     Py_DECREF(pHeight);
     Py_DECREF(pArgs);
+    Py_DECREF(pFunc);
 
     if (pValue) {
       const char *result = PyUnicode_AsUTF8(pValue);
       printf("Detected Traffic Light: %s\n", result);
       Py_DECREF(pValue);
     } else {
-        PyErr_Print();
-        printf("Error: Function call failed.\n");
-  }
-    
-  // Clean up
-  Py_DECREF(pFunc);
-  Py_DECREF(pModule);
+      PyErr_Print();
+      printf("Error: Function call failed.\n");
+    }
   }
 }
 
@@ -383,7 +370,7 @@ void reset_display() {
   wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
 }
 
-int initialize_python() {
+PyObject* initialize_python() {
   PyStatus status;
   PyConfig config;
   PyConfig_InitPythonConfig(&config);
@@ -392,15 +379,12 @@ int initialize_python() {
   status = PyConfig_SetString(&config, &config.home, L"C:/Users/Jagat Sachdeva/AppData/Local/Programs/Python/Python312");
   if (PyStatus_Exception(status)) {
     PyConfig_Clear(&config);
-    return 1;
+    return NULL;
   }
 
   // Initialize Python with the modified configuration
   status = Py_InitializeFromConfig(&config);
   PyConfig_Clear(&config);
-  if (PyStatus_Exception(status)) {
-    return 1;
-  }
 
   // Run Python code
   PyRun_SimpleString("import sys; sys.stdout = sys.__stdout__");
@@ -409,8 +393,14 @@ int initialize_python() {
     PyErr_Print();
   }
 
-  // Finalize Python
-  return 0;  
+  PyObject *pModule = PyImport_ImportModule("yolo_inference");
+    if (!pModule) {
+      PyErr_Print();
+      printf("Error: Failed to import yolo_inference.py\n");
+      return NULL;
+  }
+
+  return pModule;
 }
 
 int main(void) {
@@ -418,7 +408,33 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
-  printf("Python initialization finished with exit code: %d\n", initialize_python());
+  PyObject* yolo_inference = initialize_python();
+  if (!yolo_inference) {
+    printf("Python initialization failed.\n");
+    return -1;
+  }
+
+
+  // run warm_up_model here
+  PyObject *pWarm_Up = PyObject_GetAttrString(yolo_inference, "warm_up_model");
+  if (!pWarm_Up || !PyCallable_Check(pWarm_Up)) {
+    PyErr_Print();
+    printf("Error: Failed to load function warm_up_model\n");
+    Py_XDECREF(pWarm_Up);
+    Py_DECREF(yolo_inference);
+    return -1;
+  }
+
+  // Call warm-up function
+  PyObject *pWarm_Up_Result = PyObject_CallObject(pWarm_Up, NULL);
+  if (!pWarm_Up_Result) {
+    PyErr_Print();
+    printf("Error: warm_up_model() function call failed.\n");
+  } else {
+    Py_DECREF(pWarm_Up_Result);
+  }
+
+  Py_DECREF(pWarm_Up);
 
   // main loop
   while (wbu_driver_step() != -1) {
@@ -433,7 +449,7 @@ int main(void) {
       if (gps_coords) {
         // printf("GPS Coordinates: X = %f, Y = %f\n",
         //        gps_coords[0], gps_coords[1]);
-        check_for_signal(gps_coords[0], gps_coords[1]);
+        check_for_signal(gps_coords[0], gps_coords[1], yolo_inference);
       } else {
           printf("GPS data not available yet.\n");
       }
@@ -444,6 +460,9 @@ int main(void) {
 
   wbu_driver_cleanup();
   free(steering_pid);
+  if (yolo_inference) {  // Ensure yolo_inference is valid before freeing
+    Py_DECREF(yolo_inference);
+  }
   Py_Finalize();
 
   return 0;  

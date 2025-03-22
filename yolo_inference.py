@@ -5,6 +5,10 @@ import cv2
 
 model = YOLO("best.pt", verbose=False)
 
+def warm_up_model():
+    dummy_img = np.zeros((640, 640, 3), dtype=np.uint8)
+    model(dummy_img, verbose=False)
+
 def detect_traffic_light(image_bytes, width, height):
     # Convert raw bytes to NumPy array
     img_array = np.frombuffer(image_bytes, dtype=np.uint8).reshape((height, width, 4)) # BGRA
