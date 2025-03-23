@@ -1,6 +1,6 @@
 #include "init.h"
 
-void init(PIDController** steering_pid, int time_step, PyObject** yolo_inference) {
+void init(PIDController** steering_pid, PyObject** yolo_inference) {
     wbu_driver_init();
     wbu_driver_set_dipped_beams(true);
     wbu_driver_set_antifog_lights(true);
@@ -14,14 +14,14 @@ void init(PIDController** steering_pid, int time_step, PyObject** yolo_inference
     
     // Initialize camera properties
     camera = wb_robot_get_device("camera");
-    wb_camera_enable(camera, time_step);
+    wb_camera_enable(camera, TIME_STEP);
     camera_width = wb_camera_get_width(camera);
     camera_height = wb_camera_get_height(camera);
     camera_fov = wb_camera_get_fov(camera);
 
     // Initialize GPS
     gps = wb_robot_get_device("gps");
-    wb_gps_enable(gps, time_step);
+    wb_gps_enable(gps, TIME_STEP);
   
     // Allocate memory for PID controller
     *steering_pid = malloc(sizeof(PIDController));

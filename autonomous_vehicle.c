@@ -23,7 +23,6 @@
 #include "init.h"
 #include "pid.h"
 #include "autonomous_vehicle.h"
-#include "colors.h"
 #include "devices.h"
 #include "control.h"
 #include "lane_keeping.h"
@@ -130,7 +129,7 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
 
 int main(void) {
   PyObject* yolo_inference;
-  init(&steering_pid, TIME_STEP, &yolo_inference);
+  init(&steering_pid, &yolo_inference);
 
   TrafficLightBuffer tl_buffer = {0, 0, 0, "", 0, 0, 0};
 

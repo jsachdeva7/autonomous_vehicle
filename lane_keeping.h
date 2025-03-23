@@ -5,9 +5,8 @@
 
 #include <webots/camera.h>
 
-#include "devices.h"
-#include "colors.h"
 #include "constants.h"
+#include "devices.h"
 
 bool is_yellow(const unsigned char* pixel);
 bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned char* image);
