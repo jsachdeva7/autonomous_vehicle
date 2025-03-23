@@ -24,6 +24,7 @@
 #include "colors.h"
 #include "devices.h"
 #include "control.h"
+#include "init.h"
 
 // Constants
 #define TIME_STEP 50
@@ -34,50 +35,7 @@
 #define RED_DETECTION_INTERVAL 2
 
 // PID Controller
-PIDController *steering_pid = NULL;  // Declare as NULL initially
-
-void init() {
-  // printf("init() happening...\n");
-  fflush(stdout);
-  wbu_driver_init();
-  
-  // Initialize display
-  main_display = wb_robot_get_device("main_display_new");
-  if (main_display == 0) {
-    printf("Error: main_display not found\n");
-    // exit(1);
-  }
-  
-  // Initialize camera properties
-  camera = wb_robot_get_device("camera");
-  wb_camera_enable(camera, TIME_STEP);
-  camera_width = wb_camera_get_width(camera);
-  camera_height = wb_camera_get_height(camera);
-  camera_fov = wb_camera_get_fov(camera);
-  
-  wbu_driver_set_dipped_beams(true);
-  wbu_driver_set_antifog_lights(true);
-
-  // Initialize PID controller
-  steering_pid = malloc(sizeof(PIDController));
-  if (steering_pid == NULL) {
-    printf("Error: Failed to allocate memory for PID controller\n");
-    exit(1);  // Handle memory allocation failure
-  }
-  
-  steering_pid->kp = 16.0f;
-  steering_pid->ki = 0.0f;
-  steering_pid->kd = 0.5f;
-  steering_pid->T = 0.05f;
-  steering_pid->tau = 0.02f;
-  steering_pid->limMin = -0.5f;
-  steering_pid->limMax = 0.5f;
-
-  // printf("-------Initializing GPS...\n");
-  gps = wb_robot_get_device("gps");
-  wb_gps_enable(gps, TIME_STEP);
-  // printf("GPS Enabled!\n");
-}
+PIDController* steering_pid = NULL;  // Declare as NULL initially
 
 double stay_in_lane_angle(const unsigned char *camera_image) { 
   // First, create a new image from the camera data
@@ -372,10 +330,7 @@ PyObject* initialize_python() {
 }
 
 int main(void) {
-  init();
-  pid_init(steering_pid);
-  set_speed(30.0);
-  wbu_driver_set_steering_angle(0.0);
+  init(&steering_pid, TIME_STEP);
 
   TrafficLightBuffer tl_buffer = {0, 0, 0, "", 0, 0, 0};
 
@@ -384,7 +339,6 @@ int main(void) {
     printf("Python initialization failed.\n");
     return -1;
   }
-
 
   // run warm_up_model here
   PyObject *pWarm_Up = PyObject_GetAttrString(yolo_inference, "warm_up_model");
