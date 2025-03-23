@@ -1,4 +1,4 @@
-// webots imports
+// Webots imports
 #include <webots/camera.h>
 #include <webots/device.h>
 #include <webots/display.h>
@@ -8,38 +8,32 @@
 #include <webots/robot.h>
 #include <webots/vehicle/driver.h>
 
-// c imports
+// C Library imports
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stddef.h>
 
-// Python
+// Python import
 #include <Python.h>
 
-// // Open CV
-// #include <opencv2/opencv.hpp>
-// #include <opencv2/imgcodecs.hpp>
-
-// custom file imports
+// Header file file imports
 #include "pid.h"
 #include "autonomous_vehicle.h"
+#include "colors.h"
 
-// to be used as array indices
-enum { X, Y, Z };
-
-// constants
+// Constants
 #define TIME_STEP 50
 #define UNKNOWN 99999.99
 
-// camera
+// Camera
 WbDeviceTag camera;
 int camera_width;
 int camera_height;
 double camera_fov;
 
-// display
+// Display
 WbDeviceTag main_display;
 
 // SICK laser
@@ -48,7 +42,7 @@ int sick_width = -1;
 double sick_range = -1.0;
 double sick_fov = -1.0;
 
-// speedometer
+// Speedometer
 WbDeviceTag display;
 int display_width = 0;
 int display_height = 0;
@@ -59,21 +53,9 @@ WbDeviceTag gps;
 double gps_coords[3] = {0.0, 0.0, 0.0};
 double gps_speed = 0.0;
 
-// misc variables
-double speed = 0.0;
+// Initial speed and steering
+double speed = 30;
 double steering_angle = 0.0;
-int manual_steering = 0;
-bool autodrive = true;
-
-// rgb constants
-const unsigned char yellow[] = {109, 194, 208};
-const unsigned char lane_color[] = {190, 190, 190};
-
-// hex constants
-int white = 0xFFFFFF;
-int magenta = 0xFF00FF;
-int cyan = 0xFFFF00;
-int red = 0xFF6557;
 
 // PID Controller
 PIDController *steering_pid = NULL;  // Declare as NULL initially
@@ -186,7 +168,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   // Draw part of camera scanned over:
   int height_from_top = camera_height / 4;
   int height_from_bot = camera_height / 8;
-  wb_display_set_color(main_display, red);
+  wb_display_set_color(main_display, RED);
   wb_display_draw_line(main_display,
                       0, camera_height - height_from_bot,
                       camera_width / 2, height_from_top);
@@ -204,7 +186,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
       if (is_valid_yellow(&pixel_data[i * 4], x, y, pixel_data)) {
         yellow_pixels++;
         sum_x_yellow += x;
-        wb_display_set_color(main_display, magenta);
+        wb_display_set_color(main_display, MAGENTA);
         wb_display_draw_pixel(main_display, x, y);
       }
     }
@@ -216,7 +198,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   // Draw yellow line indicator if detected
   int vanishing_x = camera_width / 2;
   if (yellow_avg_x != -1) {
-    wb_display_set_color(main_display, magenta);
+    wb_display_set_color(main_display, MAGENTA);
     wb_display_draw_line(main_display, 
                         (int)yellow_avg_x, camera_height,        // bottom point
                         vanishing_x, start_y);                   // top point at vanishing point
@@ -228,7 +210,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
       int i = y * camera_width + x;
       if ((yellow_avg_x == -1 || x > yellow_avg_x) && is_valid_lane_color(&pixel_data[i * 4], x, y, pixel_data)) {
         lane_pixels++;
-        wb_display_set_color(main_display, cyan);
+        wb_display_set_color(main_display, CYAN);
         wb_display_draw_pixel(main_display, x, y);
         sum_x_lane += x;
       }
@@ -240,7 +222,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   
   // Draw white lane indicator if detected
   if (lane_avg_x != -1) {
-    wb_display_set_color(main_display, cyan);
+    wb_display_set_color(main_display, CYAN);
     wb_display_draw_line(main_display, 
                         (int)lane_avg_x, camera_height,          // bottom point
                         vanishing_x, start_y);                   // top point at vanishing point
@@ -413,13 +395,11 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
         }
       }
     }
-  } else {
-    printf("Not within signal detection zone.\n");
   }
 }
 
 void reset_display() {
-  wb_display_set_color(main_display, white);
+  wb_display_set_color(main_display, WHITE);
   wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
 }
 
@@ -498,7 +478,6 @@ int main(void) {
       const unsigned char * camera_data = wb_camera_get_image(camera);
       double new_steering_angle = stay_in_lane_angle(camera_data);
       set_steering_angle((new_steering_angle != UNKNOWN) ? new_steering_angle : 0);
-      // printf("new_steering_angle: %f\n", new_steering_angle);
       
       if (gps_coords) {
         if (tl_buffer.green_timer >= 5000 || tl_buffer.red_timer >= 3000 || tl_buffer.yellow_timer >= 5000) { // 5 seconds, 3 seconds, 5 seconds
