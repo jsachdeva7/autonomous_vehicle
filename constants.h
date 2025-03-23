@@ -4,10 +4,10 @@
 #define TIME_STEP 50
 #define UNKNOWN 99999.99
 
-// Traffic detection intervals
-#define GREEN_DETECTION_INTERVAL 5
-#define YELLOW_DETECTION_INTERVAL 5
-#define RED_DETECTION_INTERVAL 2
+// Traffic detection intervals (ms)
+#define GREEN_DETECTION_INTERVAL 5000
+#define YELLOW_DETECTION_INTERVAL 5000
+#define RED_DETECTION_INTERVAL 3000
 
 // Hex constants
 #define WHITE   0xFFFFFF

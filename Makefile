@@ -6,10 +6,10 @@ space := $(null) $(null)
 WEBOTS_HOME_PATH ?= $(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 
 # Source files
-SRC = autonomous_vehicle.c pid.c devices.c control.c init.c lane_keeping.c
+SRC = autonomous_vehicle.c pid.c devices.c control.c init.c lane_keeping.c traffic_detection.c
 
 # Object files (corresponding .o files for the source files)
-OBJ = build/release/autonomous_vehicle.o build/release/pid.o build/release/devices.o build/release/control.o build/release/init.o build/release/lane_keeping.o
+OBJ = build/release/autonomous_vehicle.o build/release/pid.o build/release/devices.o build/release/control.o build/release/init.o build/release/lane_keeping.o build/release/traffic_detection.o
 
 # Compiler
 CC = gcc
