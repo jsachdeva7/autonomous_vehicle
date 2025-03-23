@@ -1,6 +1,6 @@
 #include "init.h"
 
-void init(PIDController** steering_pid, int time_step) {
+void init(PIDController** steering_pid, int time_step, PyObject** yolo_inference) {
     wbu_driver_init();
     wbu_driver_set_dipped_beams(true);
     wbu_driver_set_antifog_lights(true);
@@ -45,4 +45,64 @@ void init(PIDController** steering_pid, int time_step) {
     // Set initial speed and angle
     set_speed(30.0);
     wbu_driver_set_steering_angle(0.0);
+
+    // Obtain yolo_inference function
+    *yolo_inference = initialize_python();
+    if (!*yolo_inference) {
+        printf("Python initialization failed.\n");
+    }
+
+    // Warm up YOLO
+    PyObject *pWarm_Up = PyObject_GetAttrString(*yolo_inference, "warm_up_model");
+    if (!pWarm_Up || !PyCallable_Check(pWarm_Up)) {
+        PyErr_Print();
+        printf("Error: Failed to load function warm_up_model\n");
+        Py_XDECREF(pWarm_Up);
+        Py_DECREF(*yolo_inference);
+        return;
+    }
+
+    // Call warm-up function
+    PyObject *pWarm_Up_Result = PyObject_CallObject(pWarm_Up, NULL);
+    if (!pWarm_Up_Result) {
+        PyErr_Print();
+        printf("Error: warm_up_model() function call failed.\n");
+    } else {
+        Py_DECREF(pWarm_Up_Result);
+    }
+
+    Py_DECREF(pWarm_Up);
+}
+
+PyObject* initialize_python() {
+  PyStatus status;
+  PyConfig config;
+  PyConfig_InitPythonConfig(&config);
+
+  // Set Python home (replace with your actual path)
+  status = PyConfig_SetString(&config, &config.home, L"C:/Users/Jagat Sachdeva/AppData/Local/Programs/Python/Python312");
+  if (PyStatus_Exception(status)) {
+    PyConfig_Clear(&config);
+    return NULL;
+  }
+
+  // Initialize Python with the modified configuration
+  status = Py_InitializeFromConfig(&config);
+  PyConfig_Clear(&config);
+
+  // Run Python code
+  PyRun_SimpleString("import sys; sys.stdout = sys.__stdout__");
+  PyRun_SimpleString("print('Hello from Python inside C!'); sys.stdout.flush()");
+  if (PyErr_Occurred()) {
+    PyErr_Print();
+  }
+
+  PyObject *pModule = PyImport_ImportModule("yolo_inference");
+    if (!pModule) {
+      PyErr_Print();
+      printf("Error: Failed to import yolo_inference.py\n");
+      return NULL;
+  }
+
+  return pModule;
 }

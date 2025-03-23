@@ -21,7 +21,5 @@ bool is_valid_lane_color(const unsigned char* pixel, int x, int y, const unsigne
 bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned char* image);
 double stay_in_lane_angle(const unsigned char *camera_data);
 void check_for_signal(double x, double y, PyObject* pModule, TrafficLightBuffer* buffer);
-// void init();
-PyObject* initialize_python();
 
 #endif /* AUTONOMOUS_VEHICLES_H */
