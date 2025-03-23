@@ -1,10 +1,20 @@
+"""Traffic Light Detection Test with YOLO
+
+This script tests the YOLO model trained on the LISA traffic light data set to detect for traffic lights in a video.
+It processes each frame, annotates detected traffic lights, and saves the output video.
+
+Dependencies:
+- ultralytics (YOLO)
+- opencv-python (cv2)
+"""
+
 from ultralytics import YOLO
 import cv2
 
-# Load the trained model
+# Load the trained YOLO model
 model = YOLO("best.pt") 
 
-# Load video
+# Load input video
 video_path = "input_video.mp4" 
 cap = cv2.VideoCapture(video_path)
 
@@ -22,7 +32,7 @@ out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
 while cap.isOpened():
     success, frame = cap.read()
     if not success:
-        break  # Stop if the video ends
+        break  # Stop if the video ends / cannot be read
 
     # Run YOLOv8 inference on the frame
     results = model(frame)
@@ -33,12 +43,12 @@ while cap.isOpened():
     # Write the frame to the output video
     out.write(annotated_frame)
 
-    # Display the frame (optional)
+    # Display the frame
     cv2.imshow("YOLOv8 Inference", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):  # Press 'q' to quit
         break
 
-# Release everything
+# Release video resources
 cap.release()
 out.release()
 cv2.destroyAllWindows()
