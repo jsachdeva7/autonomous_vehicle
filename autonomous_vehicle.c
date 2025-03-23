@@ -368,7 +368,15 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
     Py_DECREF(pFunc);
 
     if (pValue) {
-      const char *result = PyUnicode_AsUTF8(pValue);
+      const char *raw_result = PyUnicode_AsUTF8(pValue);
+      char raw_result_copy[100];
+
+      // Copy the raw_result into raw_result_copy (mutable string)
+      strncpy(raw_result_copy, raw_result, sizeof(raw_result_copy) - 1);
+      raw_result_copy[sizeof(raw_result_copy) - 1] = '\0'; // Null-terminate the string
+
+      // Now use strtok with the mutable copy
+      char *result = strtok(raw_result_copy, ",");
       Py_DECREF(pValue);
 
       printf("Detected Traffic Light: %s\n", result);
