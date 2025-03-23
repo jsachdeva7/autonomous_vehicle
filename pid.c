@@ -2,8 +2,6 @@
 #include <stdio.h>
 
 void pid_init(PIDController *pid) {
-    // printf("PID initializing...\n");
-    fflush(stdout);
     // clear controller variables
     pid->integrator = 0.0f;
     pid->differentiator = 0.0f;

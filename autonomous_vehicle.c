@@ -25,7 +25,6 @@
 // custom file imports
 #include "pid.h"
 #include "autonomous_vehicles.h"
-#include "helper.h"
 
 // to be used as array indices
 enum { X, Y, Z };
@@ -458,7 +457,6 @@ PyObject* initialize_python() {
 }
 
 int main(void) {
-  print_hello();
   init();
   pid_init(steering_pid);
   set_speed(30.0);
