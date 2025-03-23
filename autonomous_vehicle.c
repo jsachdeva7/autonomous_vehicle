@@ -28,20 +28,12 @@
 #define TIME_STEP 50
 #define UNKNOWN 99999.99
 
-// Initial speed and steering
-double speed = 30;
-double steering_angle = 0.0;
+#define GREEN_DETECTION_INTERVAL 5
+#define YELLOW_DETECTION_INTERVAL 5
+#define RED_DETECTION_INTERVAL 2
 
 // PID Controller
 PIDController *steering_pid = NULL;  // Declare as NULL initially
-
-// For handling time-based logic
-time_t last_detection_time = 0;
-time_t last_red_detection_time = 0;
-
-// Frequency settings (in seconds)
-const int green_yellow_detection_timeout = 5; // 5 seconds after green/yellow
-const int red_detection_interval = 2;         // 2 seconds for red light detection
 
 void init() {
   // printf("init() happening...\n");
@@ -61,13 +53,9 @@ void init() {
   camera_width = wb_camera_get_width(camera);
   camera_height = wb_camera_get_height(camera);
   camera_fov = wb_camera_get_fov(camera);
-
-  // wb_display_attach_camera(main_display, camera);
   
-  wbu_driver_set_hazard_flashers(true);
   wbu_driver_set_dipped_beams(true);
   wbu_driver_set_antifog_lights(true);
-  wbu_driver_set_wiper_mode(SLOW);
 
   // Initialize PID controller
   steering_pid = malloc(sizeof(PIDController));
@@ -91,6 +79,7 @@ void init() {
 }
 
 void set_steering_angle(double desired_angle) {
+  double steering_angle = wbu_driver_get_steering_angle();
   double steering_adjustment = pid_update(steering_pid, desired_angle, steering_angle);
   
   // Apply the adjustment, ensure within max change per step
@@ -415,6 +404,8 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
+  wbu_driver_set_steering_angle(0.0);
+
   TrafficLightBuffer tl_buffer = {0, 0, 0, "", 0, 0, 0};
 
   PyObject* yolo_inference = initialize_python();
