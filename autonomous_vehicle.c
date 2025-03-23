@@ -23,6 +23,7 @@
 #include "autonomous_vehicle.h"
 #include "colors.h"
 #include "devices.h"
+#include "control.h"
 
 // Constants
 #define TIME_STEP 50
@@ -76,36 +77,6 @@ void init() {
   gps = wb_robot_get_device("gps");
   wb_gps_enable(gps, TIME_STEP);
   // printf("GPS Enabled!\n");
-}
-
-void set_steering_angle(double desired_angle) {
-  double steering_angle = wbu_driver_get_steering_angle();
-  double steering_adjustment = pid_update(steering_pid, desired_angle, steering_angle);
-  
-  // Apply the adjustment, ensure within max change per step
-  if (steering_adjustment > 0.1) {
-    steering_adjustment = 0.1;
-  } else if (steering_adjustment < -0.1) {
-      steering_adjustment = -0.1;
-  }
-
-  // Update steering angle w/ PID correction
-  steering_angle += steering_adjustment;
-
-  // Clamp steering angle to vehicle limits
-  if (steering_angle > 0.5) {
-    steering_angle = 0.5;
-  } else if (steering_angle < -0.5) {
-    steering_angle = -0.5;
-  }
-
-  // Apply steering angle
-  wbu_driver_set_steering_angle(steering_angle);
-}
-
-void set_speed(double desired_speed) {
-  desired_speed = (desired_speed > 150) ? 50 : desired_speed;
-  wbu_driver_set_cruising_speed(desired_speed);
 }
 
 double stay_in_lane_angle(const unsigned char *camera_image) { 
@@ -443,7 +414,7 @@ int main(void) {
       const double* gps_coords = wb_gps_get_values(gps);
       const unsigned char * camera_data = wb_camera_get_image(camera);
       double new_steering_angle = stay_in_lane_angle(camera_data);
-      set_steering_angle((new_steering_angle != UNKNOWN) ? new_steering_angle : 0);
+      set_steering_angle(((new_steering_angle != UNKNOWN) ? new_steering_angle : 0), steering_pid);
       
       if (gps_coords) {
         if (tl_buffer.green_timer >= 5000 || tl_buffer.red_timer >= 3000 || tl_buffer.yellow_timer >= 5000) { // 5 seconds, 3 seconds, 5 seconds

@@ -121,4 +121,4 @@ build/release/autonomous_vehicle.o: autonomous_vehicle.c \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/cpython/fileutils.h \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/cpython/pyfpe.h \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/tracemalloc.h \
- pid.h autonomous_vehicle.h colors.h devices.h
+ pid.h autonomous_vehicle.h colors.h devices.h control.h
