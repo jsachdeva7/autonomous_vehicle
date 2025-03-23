@@ -79,6 +79,14 @@ int red = 0xFF6557;
 // PID Controller
 PIDController *steering_pid = NULL;  // Declare as NULL initially
 
+// For handling time-based logic
+time_t last_detection_time = 0;
+time_t last_red_detection_time = 0;
+
+// Frequency settings (in seconds)
+const int green_yellow_detection_timeout = 5; // 5 seconds after green/yellow
+const int red_detection_interval = 2;         // 2 seconds for red light detection
+
 void init() {
   // printf("init() happening...\n");
   fflush(stdout);
@@ -313,11 +321,13 @@ bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned ch
 }
 
 void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer *buffer) {
-  if (strcmp(buffer->decision, "green") == 0 || strcmp(buffer->decision, "red") == 0) {
-    return;
-  }
+  // Skip detection if the decision is already made as green
+  if (strcmp(buffer->decision, "") != 0) {
+    return;  // Skip detection if a decision is committed to
+    printf("Decision made: %s. No need for checking at the moment.\n", buffer->decision);
+  } 
 
-  bool within_y = y > -75 && y < -66;
+  bool within_y = y > -75 && y < -60;
   bool within_x = x < 48.5 && x > 46.5;
   if (within_x && within_y) {
     const unsigned char *image = wb_camera_get_image(camera);
@@ -348,6 +358,7 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
 
     // Call detect_traffic_light("traffic_light.jpg")
     PyObject *pArgs = PyTuple_Pack(3, pBytes, pWidth, pHeight);
+    printf("YOLO Running.\n");
     PyObject *pValue = PyObject_CallObject(pFunc, pArgs);
 
     Py_DECREF(pBytes);
@@ -361,37 +372,42 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
       Py_DECREF(pValue);
 
       printf("Detected Traffic Light: %s\n", result);
-      
+
+      // Increment the counts and timers based on the result
       if (strcmp(result, "red") == 0) {
         buffer->red_count++;
+        printf("Incremented red_count to %d\n", buffer->red_count);
+        if (buffer->red_count >= 2) {
+          printf("Decision: STOP. Detectionless for 3 seconds.\n");
+          strcpy(buffer->decision, "red");
+          buffer->red_count = 0;
+          buffer->yellow_count = 0;
+          buffer->green_count = 0;
+        }
       } else if (strcmp(result, "green") == 0) {
         buffer->green_count++;
+        printf("Incremented green_count to %d\n", buffer->green_count);
+        if (buffer->green_count >= 2) {
+          printf("Decision: GO. Detectionless for 5 seconds.\n");
+          strcpy(buffer->decision, "green");
+          buffer->red_count = 0;
+          buffer->yellow_count = 0;
+          buffer->green_count = 0;
+        }
       } else if (strcmp(result, "yellow") == 0) {
         buffer->yellow_count++;
+        printf("Incremented yellow_count to %d\n", buffer->yellow_count);
+        if (buffer->yellow_count >= 2) {
+          printf("Decision: CAUTION. Detectionless for 5 seconds\n");
+          strcpy(buffer->decision, "green");
+          buffer->red_count = 0;
+          buffer->yellow_count = 0;
+          buffer->green_count = 0;
+        }
       }
-
-      if (buffer->red_count >= 2) {
-        printf("Decision: STOP (Red light detected 3 times)\n");
-        strcpy(buffer->decision, "red");
-      } else if (buffer->green_count >= 2) {
-        printf("Decision: GO (Green light detected 3 times)\n");
-        printf("Green decision made, stopping detection for now.\n");
-        strcpy(buffer->decision, "green");
-      } else if (buffer->yellow_count >= 2) {
-        printf("Decision: CAUTION (Yellow light detected 3 times)\n");
-        strcpy(buffer->decision, "yellow");
-      } else {
-        return;
-      }
-      
-      buffer->red_count = 0;
-      buffer->yellow_count = 0;
-      buffer->green_count = 0;
-
-    } else {
-      PyErr_Print();
-      printf("Error: Function call failed.\n");
     }
+  } else {
+    printf("Not within signal detection zone.\n");
   }
 }
 
@@ -438,7 +454,7 @@ int main(void) {
   init();
   pid_init(steering_pid);
   set_speed(30.0);
-  TrafficLightBuffer tl_buffer = {0, 0, 0, "none"};
+  TrafficLightBuffer tl_buffer = {0, 0, 0, "", 0, 0, 0};
 
   PyObject* yolo_inference = initialize_python();
   if (!yolo_inference) {
@@ -479,15 +495,32 @@ int main(void) {
       // printf("new_steering_angle: %f\n", new_steering_angle);
       
       if (gps_coords) {
+        if (tl_buffer.green_timer >= 5000 || tl_buffer.red_timer >= 3000 || tl_buffer.yellow_timer >= 5000) { // 5 seconds, 3 seconds, 5 seconds
+          strcpy(tl_buffer.decision, "");  // Reset decision
+          tl_buffer.green_timer = 0;  // Reset green timer
+          tl_buffer.red_timer = 0;  // Reset red timer
+          tl_buffer.yellow_timer = 0;  // Reset yellow timer
+          tl_buffer.green_count = 0; // Reset counts 
+          tl_buffer.red_count = 0;
+          tl_buffer.yellow_count = 0;
+        } else {
+          if (strcmp(tl_buffer.decision, "green") == 0) {
+            tl_buffer.green_timer += TIME_STEP;
+          } else if (strcmp(tl_buffer.decision, "red") == 0) {
+            tl_buffer.red_timer += TIME_STEP;
+          } else if (strcmp(tl_buffer.decision, "yellow") == 0) {
+            tl_buffer.yellow_timer += TIME_STEP;
+          }
+        }
         check_for_signal(gps_coords[0], gps_coords[1], yolo_inference, &tl_buffer);
 
         if (strcmp(tl_buffer.decision, "red") == 0) {
           set_speed(0.0);  // Stop the car
         } else if (strcmp(tl_buffer.decision, "yellow") == 0) {
-          set_speed(10.0);  // Slow down
-        } else {
+          set_speed(30.0);  // Normal speed (simplification)
+        } else if (strcmp(tl_buffer.decision, "green") == 0) {
           set_speed(30.0);  // Normal speed
-        }
+        } 
       } else {
           printf("GPS data not available yet.\n");
       }
