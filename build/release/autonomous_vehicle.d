@@ -1,4 +1,5 @@
 build/release/autonomous_vehicle.o: autonomous_vehicle.c \
+ autonomous_vehicle.h \
  C:\Program\ Files\Webots/include/controller/c/webots/camera.h \
  C:\Program\ Files\Webots/include/controller/c/webots/camera_recognition_object.h \
  C:\Program\ Files\Webots/include/controller/c/webots/types.h \
@@ -121,5 +122,5 @@ build/release/autonomous_vehicle.o: autonomous_vehicle.c \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/cpython/fileutils.h \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/cpython/pyfpe.h \
  C:/Users/Jagat\ Sachdeva/AppData/Local/Programs/Python/Python312/include/tracemalloc.h \
- constants.h init.h devices.h pid.h control.h autonomous_vehicle.h \
- lane_keeping.h traffic_detection.h
+ constants.h init.h devices.h pid.h control.h lane_keeping.h \
+ traffic_detection.h
