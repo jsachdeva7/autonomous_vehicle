@@ -117,3 +117,4 @@ void check_buffer_timers(TrafficLightBuffer* tl_buffer) {
         }
     }
 }
+

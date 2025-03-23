@@ -28,10 +28,8 @@
 #include "lane_keeping.h"
 #include "traffic_detection.h"
 
-// PID Controller
-PIDController* steering_pid = NULL;  // Declare as NULL initially
-
 int main(void) {
+  PIDController* steering_pid = NULL;  // Declare as NULL initially
   PyObject* yolo_inference;
   init(&steering_pid, &yolo_inference);
 
@@ -56,7 +54,7 @@ int main(void) {
           set_speed(30.0);  // Normal speed (simplification)
         } else if (strcmp(tl_buffer.decision, "green") == 0) {
           set_speed(30.0);  // Normal speed
-        } 
+        }
       } else {
           printf("GPS data not available yet.\n");
       }
@@ -65,12 +63,6 @@ int main(void) {
     ++i;
   }
 
-  wbu_driver_cleanup();
-  free(steering_pid);
-  if (yolo_inference) {  // Ensure yolo_inference is valid before freeing
-    Py_DECREF(yolo_inference);
-  }
-  Py_Finalize();
-
+  cleanup(&steering_pid, &yolo_inference);
   return 0;  
 }

@@ -22,5 +22,5 @@
 
 void init(PIDController** steering_pid, PyObject** yolo_inference);
 PyObject* initialize_python();
-
+void cleanup(PIDController** steering_pid, PyObject** yolo_inference);
 #endif /* INIT_H */

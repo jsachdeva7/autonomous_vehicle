@@ -106,3 +106,12 @@ PyObject* initialize_python() {
 
   return pModule;
 }
+
+void cleanup(PIDController** steering_pid, PyObject** yolo_inference) {
+  wbu_driver_cleanup();
+  free(*steering_pid);
+  if (*yolo_inference) {  
+    Py_DECREF(*yolo_inference);
+  }
+  Py_Finalize();
+}
