@@ -15,7 +15,7 @@ typedef struct {
 } TrafficLightBuffer;
 
 // Function prototypes
-double stay_in_lane_angle(const unsigned char *camera_data);
+// double stay_in_lane_angle(const unsigned char *camera_data);
 void check_for_signal(double x, double y, PyObject* pModule, TrafficLightBuffer* buffer);
 
 #endif /* AUTONOMOUS_VEHICLES_H */

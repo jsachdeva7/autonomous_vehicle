@@ -5,6 +5,7 @@
         "autonomous_vehicle.h": "c",
         "devices.h": "c",
         "pid.h": "c",
-        "lane_keeping.h": "c"
+        "lane_keeping.h": "c",
+        "stdlib.h": "c"
     }
 }
