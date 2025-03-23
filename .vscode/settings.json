@@ -3,6 +3,8 @@
     "files.associations": {
         "init.h": "c",
         "autonomous_vehicle.h": "c",
-        "devices.h": "c"
+        "devices.h": "c",
+        "pid.h": "c",
+        "lane_keeping.h": "c"
     }
 }

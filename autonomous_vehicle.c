@@ -19,12 +19,13 @@
 #include <Python.h>
 
 // Header file imports
+#include "init.h"
 #include "pid.h"
 #include "autonomous_vehicle.h"
 #include "colors.h"
 #include "devices.h"
 #include "control.h"
-#include "init.h"
+#include "lane_keeping.h"
 
 // Constants
 #define TIME_STEP 50
@@ -120,9 +121,7 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
                         (int)lane_avg_x, camera_height,          // bottom point
                         vanishing_x, start_y);                   // top point at vanishing point
   }
-
-  // printf("Centerline pixels: %d\nLane line pixels: %d\n--------\n", yellow_pixels, lane_pixels);
-
+  
   // Handle missing lane lines
   double target_x;
   double correction_factor = -1.2;
@@ -132,66 +131,16 @@ double stay_in_lane_angle(const unsigned char *camera_image) {
   } else if (yellow_avg_x == -1) {
     target_x = correction_factor * lane_avg_x / camera_width;  // Use only the white lane
   } else if (lane_avg_x == -1) {
-    // if (yellow_pixels < 10 && yellow_pixels > 30) {
     if (yellow_pixels < 10) {
       return UNKNOWN;
     }
     target_x = correction_factor * yellow_avg_x / camera_width;  // Use only the yellow lane
   } else {
-    // if (lane_pixels > 20) {
-    //   printf("Too many lane pixels! Ignoring lane line.");
-    //   return UNKNOWN;
-    // }
     target_x = (0.4 * (yellow_avg_x / camera_width) + 0.6 * (lane_avg_x / camera_width));
   }
 
   // Convert to angle
   return (target_x - 0.5) * camera_fov;
-}
-
-bool is_lane_color(const unsigned char* pixel) {
-  bool bool_array[3] = {false, false, false};
-  for (int i = 0; i < 3; ++i) {
-    if (pixel[i] - lane_color[i] > 0 && pixel[i] - lane_color[i] < 50) {
-      bool_array[i] = true;
-    }
-  }
-  return bool_array[0] && bool_array[1] && bool_array[2];
-}
-
-bool is_valid_lane_color(const unsigned char* pixel, int x, int y, const unsigned char* image) {
-  if (!is_lane_color(pixel)) return false;
-
-  // Count how many "lane" pixels are nearby horizontally
-  int lane_pixel_width = 0;
-  for (int dx = -5; dx <=5; dx++) {
-    int nx = x + dx;
-    if (nx >= 0 && nx < camera_width && is_yellow(&image[(y * camera_width + nx) * 4])) {
-      lane_pixel_width++;
-    }
-  }
-
-  return lane_pixel_width < 6;
-}
-
-bool is_yellow(const unsigned char* pixel) {
-  int color_diff = abs(pixel[0] - yellow[0]) + abs(pixel[1] - yellow[1]) + abs(pixel[2] - yellow[2]);
-  return color_diff < 30;
-}
-
-bool is_valid_yellow(const unsigned char* pixel, int x, int y, const unsigned char* image) {
-  if (!is_yellow(pixel)) return false;
-
-  // Count how many yellow pixels are nearby horizontally
-  int yellow_width = 0;
-  for (int dx = -5; dx <= 5; dx++) { // Check ±5 pixels in X direction
-      int nx = x + dx;
-      if (nx >= 0 && nx < camera_width && is_yellow(&image[(y * camera_width + nx) * 4])) {
-        yellow_width++;
-      }
-  }
-
-  return yellow_width < 6;  // Ignore wide patches (crosswalks)
 }
 
 void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer *buffer) {
@@ -289,11 +238,6 @@ void check_for_signal(double x, double y, PyObject *pModule, TrafficLightBuffer 
       }
     }
   }
-}
-
-void reset_display() {
-  wb_display_set_color(main_display, WHITE);
-  wb_display_fill_rectangle(main_display, 0, 0, wb_display_get_width(main_display), wb_display_get_height(main_display));
 }
 
 int main(void) {
