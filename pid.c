@@ -1,28 +1,38 @@
+/**
+ * @file pid.c
+ * @brief PID Controller Implementation
+ * 
+ * This file contains the implementation of a generic PID controller.
+ * The controller, in general, helps regulate a system by minimizing the difference
+ * between a desired set point and a measured value.
+ * 
+ * In this project, the PID controller is used to regulate the steering 
+ * angle of the BMW X5, ensuring it follows the desired trajectory.
+ */
+
 #include "pid.h"
 #include <stdio.h>
 
 void pid_init(PIDController *pid) {
-    // clear controller variables
+    // Clear controller variables
     pid->integrator = 0.0f;
     pid->differentiator = 0.0f;
     pid->prevError = 0.0f;
     pid->prevMeasurement = 0.0f;
     pid->out = 0.0f;
-    // printf("PID initialized!\n");
-    fflush(stdout);
 }
 
 float pid_update(PIDController *pid, float setpoint, float measurement) {
-    // error signal
+    // Compute error signal
     float error = setpoint - measurement;
 
-    // proportional term
+    // Proportional term
     float proportional = pid->kp * error;
 
-    // integral term
+    // Integral term (trapezoidal integration)
     pid->integrator = pid->integrator + 0.5f * pid->ki * pid->T * (error + pid->prevError);
 
-    // anti-windup via dynamic integrator clamping
+    // Anti-windup: dynamic integrator clamping
     float limMinInt, limMaxInt;
     if (pid->limMax > proportional) {
         limMaxInt = pid->limMax - proportional;
@@ -36,19 +46,19 @@ float pid_update(PIDController *pid, float setpoint, float measurement) {
         limMinInt = 0.0f;
     }
 
-    // clamp integrator
+    // Clamp integrator within allowed limits
     if (pid->integrator > limMaxInt) {
         pid->integrator = limMaxInt;
     } else if (pid->integrator < limMinInt) {
         pid->integrator = limMinInt;
     }
 
-    // derivative (band-limited differentiator)
+    // Derivative term (band-limited differentiator)
     pid->differentiator = (2.0f * pid->kd * (measurement - pid->prevMeasurement)
                            + (2.0f * pid->tau - pid->T) * pid->differentiator)
                           / (2.0f * pid->tau + pid->T);
 
-    // compute output and apply limits
+    // Compute final output and enforce limits
     pid->out = proportional + pid->integrator + pid->differentiator;
     if (pid->out > pid->limMax) {
         pid->out = pid->limMax;
@@ -56,10 +66,10 @@ float pid_update(PIDController *pid, float setpoint, float measurement) {
         pid->out = pid->limMin;
     }
 
-    // store error and measurement for next time
+    // Store error and measurement for next iteration
     pid->prevError = error;
     pid->prevMeasurement = measurement;
 
-    // return controller output
+    // Return computed output
     return pid->out;
 }
