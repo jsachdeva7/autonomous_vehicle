@@ -12,7 +12,7 @@ from ultralytics import YOLO
 import cv2
 
 # Load the trained YOLO model
-model = YOLO("best.pt") 
+model = YOLO("../models/best.pt") 
 
 # Load input video
 video_path = "input_video.mp4" 

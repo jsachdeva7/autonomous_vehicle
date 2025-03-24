@@ -1,4 +1,4 @@
-#include "autonomous_vehicle.h"
+#include "../include/autonomous_vehicle.h"
 
 int main(void) {
   PIDController* steering_pid = NULL;  // Declare as NULL initially

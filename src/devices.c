@@ -1,4 +1,4 @@
-#include "devices.h"
+#include "../include/devices.h"
 
 // Camera
 WbDeviceTag camera;

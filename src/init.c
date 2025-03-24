@@ -1,4 +1,4 @@
-#include "init.h"
+#include "../include/init.h"
 
 void init(PIDController** steering_pid, PyObject** yolo_inference) {
     wbu_driver_init();
@@ -97,6 +97,8 @@ PyObject* initialize_python() {
     PyErr_Print();
   }
 
+  PyObject *sys_path = PySys_GetObject("path");
+  PyList_Append(sys_path, PyUnicode_FromString("C:/Users/Jagat Sachdeva/Documents/autonomous_car/controllers/autonomous_vehicle/scripts"));
   PyObject *pModule = PyImport_ImportModule("yolo_inference");
     if (!pModule) {
       PyErr_Print();

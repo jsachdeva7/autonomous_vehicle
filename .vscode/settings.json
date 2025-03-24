@@ -6,6 +6,7 @@
         "devices.h": "c",
         "pid.h": "c",
         "lane_keeping.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "traffic_detection.h": "c"
     }
 }

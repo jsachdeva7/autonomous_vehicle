@@ -1,14 +1,18 @@
 #ifndef PID_H
 #define PID_H
 
+#include <stdio.h>
+
 /**
  * @file pid.c
  * @brief PID Controller Implementation
  * 
  * This file defines the PIDController struct and function prototypes for implementing
  * a PID controller.
+ * 
  * The controller, in general, helps regulate a system by minimizing the difference
  * between a desired set point and a measured value.
+ * 
  * In this project, the PID controller is used to minimize the difference between the 
  * desired steering angle and the measured steering angle of the BMW X5.
  */

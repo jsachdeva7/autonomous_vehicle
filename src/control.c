@@ -1,4 +1,4 @@
-#include "control.h"
+#include "../include/control.h"
 
 void set_steering_angle(double desired_angle, PIDController* steering_pid) {
     double steering_angle = wbu_driver_get_steering_angle();

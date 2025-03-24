@@ -6,10 +6,10 @@ space := $(null) $(null)
 WEBOTS_HOME_PATH ?= $(subst $(space),\ ,$(strip $(subst \,/,$(WEBOTS_HOME))))
 
 # Source files
-SRC = autonomous_vehicle.c pid.c devices.c control.c init.c lane_keeping.c traffic_detection.c
+SRC = src/autonomous_vehicle.c src/pid.c src/devices.c src/control.c src/init.c src/lane_keeping.c src/traffic_detection.c
 
 # Object files (corresponding .o files for the source files)
-OBJ = build/release/autonomous_vehicle.o build/release/pid.o build/release/devices.o build/release/control.o build/release/init.o build/release/lane_keeping.o build/release/traffic_detection.o
+OBJ = $(patsubst src/%, build/release/%, $(SRC:.c=.o))
 
 # Compiler
 CC = gcc
@@ -21,8 +21,7 @@ CFLAGS += -I"C:/Users/Jagat Sachdeva/AppData/Local/Programs/Python/Python312/inc
 
 # Linker flags
 LDFLAGS = -L"C:/Users/Jagat Sachdeva/AppData/Local/Programs/Python/Python312/libs" -lpython312 # Link against Python 3.12
-LIBRARIES = -ldriver -lcar
-LDFLAGS += $(LIBRARIES)
+LDFLAGS += -L"C:/Program Files/Webots/lib/controller" -lController -ldriver -lcar
 
 # Output executable
 TARGET = build/release/autonomous_vehicle.exe
@@ -38,6 +37,6 @@ $(TARGET): $(OBJ)
 	$(CC) $^ -o $@ $(LDFLAGS)
 
 # Compilation step (ensures object files go to build/release/)
-build/release/%.o: %.c
+build/release/%.o: src/%.c
 	@mkdir -p build/release
 	$(CC) $(CFLAGS) -c $< -o $@

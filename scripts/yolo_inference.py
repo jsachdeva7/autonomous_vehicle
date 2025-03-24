@@ -15,7 +15,7 @@ import numpy as np
 import cv2
 
 # Load YOLO Model
-model = YOLO("best.pt", verbose=False)
+model = YOLO("../models/best.pt", verbose=False)
 
 def warm_up_model() -> None:
     """Runs a dummy inference to warm up the YOLO model."""

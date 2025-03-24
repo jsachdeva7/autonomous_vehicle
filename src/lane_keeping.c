@@ -1,4 +1,4 @@
-#include "lane_keeping.h"
+#include "../include/lane_keeping.h"
 
 bool is_yellow(const unsigned char* pixel) {
     int color_diff = abs(pixel[0] - yellow[0]) + abs(pixel[1] - yellow[1]) + abs(pixel[2] - yellow[2]);

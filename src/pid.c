@@ -3,15 +3,9 @@
  * @brief PID Controller Implementation
  * 
  * This file contains the implementation of a generic PID controller.
- * The controller, in general, helps regulate a system by minimizing the difference
- * between a desired set point and a measured value.
- * 
- * In this project, the PID controller is used to regulate the steering 
- * angle of the BMW X5, ensuring it follows the desired trajectory.
  */
 
-#include "pid.h"
-#include <stdio.h>
+#include "../include/pid.h"
 
 void pid_init(PIDController *pid) {
     // Clear controller variables
